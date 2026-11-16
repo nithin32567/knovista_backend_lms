@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model students {
+  id                       BigInt    @id @default(autoincrement())
+  first_name               String    @db.VarChar(50)
+  last_name                String    @db.VarChar(50)
+  gender                   String
+  date_of_birth            DateTime? @db.Date
+  mobile_no                String    @db.VarChar(15)
+  alternate_mobile_no      String?   @db.VarChar(15)
+  parent_mobile_no         String?   @db.VarChar(15)
+  parent_name              String?   @db.VarChar(100)
+  address                  String?   @db.Text
+  location                 String?   @db.VarChar(100)
+  pincode                  String?   @db.VarChar(10)
+  state                    String?   @db.VarChar(50)
+  email                    String    @unique @db.VarChar(100)
+  username                 String    @unique @db.VarChar(50)
+  password                 String    @db.VarChar(255)
+  profile_pic              String?   @db.VarChar(150)
+  cv_file_path             String?   @db.VarChar(255)
+  qualification            String?   @db.VarChar(100)
+  last_login_on            DateTime?
+  status                   String    @default("Pending")
+  forgot_pass_token        String?   @db.VarChar(255)
+  forgot_pass_expiry       DateTime?
+  forgot_pass_token_expiry DateTime?
+  login_token              String?   @db.VarChar(255)
+  login_status             String    @default("inactive")
+  login_status_updated_at  DateTime?
+  sales_person_name        String?   @db.VarChar(150)
+  sales_person_phone       String?   @db.VarChar(20)
+  paid_amount              Decimal   @default(0.00) @db.Decimal(10, 2)
+  created_by               BigInt
+  updated_by               BigInt
+  special_category_id      BigInt?
+  created_at               DateTime? @default(now())
+  updated_at               DateTime? @updatedAt
+}
+
+model institution_roles {
+  id                BigInt              @id @default(autoincrement())
+  name              String              @db.VarChar(100)
+  status            String              @default("Active")
+  created_by        BigInt
+  updated_by        BigInt
+  created_at        DateTime?
+  updated_at        DateTime?
+  institution_users institution_users[]
+}
+
+model institution_users {
+  id                       BigInt            @id @default(autoincrement())
+  role_id                  BigInt
+  first_name               String            @db.VarChar(50)
+  last_name                String            @db.VarChar(50)
+  gender                   String
+  date_of_birth            DateTime?         @db.Date
+  mobile_no                String?           @db.VarChar(15)
+  address                  String?           @db.Text
+  location                 String?           @db.VarChar(100)
+  pincode                  String?           @db.VarChar(10)
+  state                    String?           @db.VarChar(50)
+  email                    String            @unique @db.VarChar(100)
+  username                 String            @unique @db.VarChar(50)
+  password                 String            @db.VarChar(255)
+  profile_pic              String?           @db.VarChar(150)
+  qualification            String?           @db.VarChar(100)
+  last_login_on            DateTime?
+  status                   String            @default("Active")
+  forgot_pass_token        String?           @db.VarChar(255)
+  forgot_pass_token_expiry DateTime?
+  created_by               BigInt
+  updated_by               BigInt
+  created_at               DateTime?
+  updated_at               DateTime?
+  role                     institution_roles @relation(fields: [role_id], references: [id])
+}
