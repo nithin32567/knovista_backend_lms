@@ -67,6 +67,20 @@ export class StudentRegisterUseCase {
         mobileNo: student.mobileNo,
         role: 'student',
       },
+      student: {
+        id: student.id,
+        first_name: student.firstName,
+        last_name: student.lastName,
+        email: student.email,
+        username: student.username,
+        mobile_no: student.mobileNo,
+        gender: student.gender,
+        status: student.status,
+        profile_pic: null,
+        date_of_birth: null,
+        created_at: student.createdAt ? student.createdAt.toISOString() : null,
+        last_login_on: null,
+      },
     };
   }
 

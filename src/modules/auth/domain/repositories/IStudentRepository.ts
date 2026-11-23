@@ -18,5 +18,6 @@ export interface IStudentRepository {
   findByMobile(mobile: string): Promise<Student | null>;
   create(params: CreateStudentParams): Promise<Student>;
   updateLoginStatus(id: number, status: string): Promise<void>;
+  updatePassword(id: number, passwordHash: string): Promise<void>;
 }
 

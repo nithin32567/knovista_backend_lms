@@ -82,6 +82,13 @@ export class PrismaStudentRepository implements IStudentRepository {
     });
   }
 
+  async updatePassword(id: number, passwordHash: string): Promise<void> {
+    await this.prisma.students.update({
+      where: { id: BigInt(id) },
+      data: { password: passwordHash },
+    });
+  }
+
   private mapToDomain(raw: {
     id: bigint;
     first_name: string;

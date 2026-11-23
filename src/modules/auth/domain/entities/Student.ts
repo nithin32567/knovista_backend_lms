@@ -65,6 +65,14 @@ export class Student {
     return this.props.lastLoginOn;
   }
 
+  get createdAt(): Date | null {
+    return this.props.createdAt;
+  }
+
+  get updatedAt(): Date | null {
+    return this.props.updatedAt;
+  }
+
   public isBlocked(): boolean {
     return this.props.status === 'Blocked';
   }

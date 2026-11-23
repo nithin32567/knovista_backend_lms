@@ -1,9 +1,23 @@
 import { z } from 'zod';
 
-export const StudentLoginSchema = z.object({
-  email_or_username_or_mobile: z.string().min(1, 'Identifier is required'),
+export const StudentLoginSchema = z.preprocess((val) => {
+  if (typeof val === 'object' && val !== null) {
+    const raw = val as Record<string, unknown>;
+    const identifier = raw['email_or_username_or_mobile'] ?? raw['login'];
+    return {
+      ...raw,
+      email_or_username_or_mobile: identifier,
+    };
+  }
+  return val;
+}, z.object({
+  email_or_username_or_mobile: z.string({
+    required_error: 'Identifier is required',
+  }).min(1, 'Identifier is required'),
+  login: z.string().optional(),
   password: z.string().min(1, 'Password is required'),
-});
+  rememberMe: z.boolean().optional(),
+}));
 
 export type StudentLoginInput = z.infer<typeof StudentLoginSchema>;
 
@@ -18,6 +32,34 @@ export const StudentRegisterSchema = z.object({
 
 export type StudentRegisterInput = z.infer<typeof StudentRegisterSchema>;
 
+export const ForgotPasswordSchema = z.object({
+  email: z.string().email('A valid email address is required'),
+});
+
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
+
+export const ResetPasswordSchema = z.object({
+  token: z.string().min(1, 'Reset token is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password_confirmation: z.string().min(1, 'Password confirmation is required'),
+}).refine((data) => data.password === data.password_confirmation, {
+  message: 'Passwords do not match',
+  path: ['password_confirmation'],
+});
+
+export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
+
+export const ChangePasswordSchema = z.object({
+  current_password: z.string().min(1, 'Current password is required'),
+  password: z.string().min(8, 'New password must be at least 8 characters'),
+  password_confirmation: z.string().min(1, 'Password confirmation is required'),
+}).refine((data) => data.password === data.password_confirmation, {
+  message: 'Passwords do not match',
+  path: ['password_confirmation'],
+});
+
+export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
+
 export interface StudentAuthResponse {
   token: string;
   tokenType: 'bearer';
@@ -31,5 +73,20 @@ export interface StudentAuthResponse {
     mobileNo: string;
     role: 'student';
   };
+  student?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    username: string;
+    mobile_no: string;
+    gender: string;
+    status: string;
+    profile_pic: string | null;
+    date_of_birth: string | null;
+    created_at: string | null;
+    last_login_on: string | null;
+  };
+  posters?: unknown[];
+  intern_type?: string | null;
 }
-

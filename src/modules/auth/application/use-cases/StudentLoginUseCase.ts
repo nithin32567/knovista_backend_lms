@@ -10,9 +10,12 @@ export class StudentLoginUseCase {
   constructor(private readonly studentRepository: IStudentRepository) {}
 
   async execute(input: StudentLoginInput): Promise<StudentAuthResponse> {
-    const student = await this.studentRepository.findByIdentifier(
-      input.email_or_username_or_mobile
-    );
+    const identifier = input.login ?? input.email_or_username_or_mobile;
+    if (!identifier) {
+      throw new UnauthorizedError('Invalid credentials');
+    }
+
+    const student = await this.studentRepository.findByIdentifier(identifier);
 
     if (!student) {
       throw new UnauthorizedError('Invalid credentials');
@@ -60,6 +63,22 @@ export class StudentLoginUseCase {
         mobileNo: student.mobileNo,
         role: 'student',
       },
+      student: {
+        id: student.id,
+        first_name: student.firstName,
+        last_name: student.lastName,
+        email: student.email,
+        username: student.username,
+        mobile_no: student.mobileNo,
+        gender: student.gender,
+        status: student.status,
+        profile_pic: null,
+        date_of_birth: null,
+        created_at: null,
+        last_login_on: null,
+      },
+      posters: [],
+      intern_type: null,
     };
   }
 }

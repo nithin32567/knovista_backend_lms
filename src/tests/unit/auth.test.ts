@@ -25,6 +25,7 @@ describe('Auth Module Unit Tests', () => {
       findByMobile: vi.fn(),
       create: vi.fn(),
       updateLoginStatus: vi.fn(),
+      updatePassword: vi.fn(),
     };
 
     mockStaffRepo = {

@@ -56,6 +56,212 @@ model institution_roles {
   institution_users institution_users[]
 }
 
+model password_reset_tokens {
+  id         BigInt    @id @default(autoincrement())
+  email      String    @db.VarChar(100)
+  token      String    @unique @db.VarChar(255)
+  guard      String    @default("student") @db.VarChar(30)
+  expires_at DateTime
+  created_at DateTime? @default(now())
+
+  @@index([email, guard])
+}
+
+model programs {
+  id          BigInt     @id @default(autoincrement())
+  name        String     @db.VarChar(150)
+  description String?    @db.Text
+  status      String     @default("Active") @db.VarChar(30)
+  created_by  BigInt
+  updated_by  BigInt
+  created_at  DateTime?  @default(now())
+  updated_at  DateTime?  @updatedAt
+  sections    sections[]
+}
+
+model sections {
+  id                    BigInt                  @id @default(autoincrement())
+  program_id            BigInt
+  name                  String                  @db.VarChar(150)
+  description           String?                 @db.Text
+  duration_in_months    Int?
+  status                String                  @default("Active") @db.VarChar(30)
+  created_by            BigInt
+  updated_by            BigInt
+  created_at            DateTime?               @default(now())
+  updated_at            DateTime?               @updatedAt
+  program               programs                @relation(fields: [program_id], references: [id])
+  modules               modules[]
+  program_section_batches program_section_batches[]
+}
+
+model modules {
+  id          BigInt      @id @default(autoincrement())
+  section_id  BigInt
+  name        String      @db.VarChar(150)
+  description String?     @db.Text
+  order       Int         @default(0)
+  status      String      @default("Active") @db.VarChar(30)
+  created_by  BigInt
+  updated_by  BigInt
+  created_at  DateTime?   @default(now())
+  updated_at  DateTime?   @updatedAt
+  section     sections    @relation(fields: [section_id], references: [id])
+  topics      topics[]
+  student_section_modules student_section_modules[]
+}
+
+model topics {
+  id           BigInt        @id @default(autoincrement())
+  module_id    BigInt
+  name         String        @db.VarChar(200)
+  description  String?       @db.Text
+  type         String        @default("video") @db.VarChar(30)
+  content_url  String?       @db.VarChar(500)
+  order        Int           @default(0)
+  status       String        @default("Active") @db.VarChar(30)
+  created_by   BigInt
+  updated_by   BigInt
+  created_at   DateTime?     @default(now())
+  updated_at   DateTime?     @updatedAt
+  module       modules       @relation(fields: [module_id], references: [id])
+  topic_files  topic_files[]
+  topic_assessments topic_assessments[]
+  student_section_module_topics student_section_module_topics[]
+}
+
+model topic_files {
+  id         BigInt    @id @default(autoincrement())
+  topic_id   BigInt
+  file_name  String    @db.VarChar(255)
+  file_path  String    @db.VarChar(500)
+  file_type  String?   @db.VarChar(50)
+  created_by BigInt
+  created_at DateTime? @default(now())
+  topic      topics    @relation(fields: [topic_id], references: [id])
+}
+
+model topic_assessments {
+  id              BigInt   @id @default(autoincrement())
+  topic_id        BigInt
+  question        String   @db.Text
+  options         Json
+  correct_answer  String   @db.VarChar(10)
+  marks           Int      @default(1)
+  created_by      BigInt
+  updated_by      BigInt
+  created_at      DateTime? @default(now())
+  updated_at      DateTime? @updatedAt
+  topic           topics   @relation(fields: [topic_id], references: [id])
+}
+
+model special_categories {
+  id          BigInt    @id @default(autoincrement())
+  name        String    @db.VarChar(100)
+  description String?   @db.Text
+  status      String    @default("Active") @db.VarChar(30)
+  created_by  BigInt
+  updated_by  BigInt
+  created_at  DateTime? @default(now())
+  updated_at  DateTime? @updatedAt
+}
+
+model program_section_batches {
+  id                   BigInt             @id @default(autoincrement())
+  section_id           BigInt
+  batch_name           String             @db.VarChar(150)
+  tutor_id             BigInt?
+  qa_id                BigInt?
+  placement_officer_id BigInt?
+  start_date           DateTime?          @db.Date
+  end_date             DateTime?          @db.Date
+  status               String             @default("Active") @db.VarChar(30)
+  created_by           BigInt
+  updated_by           BigInt
+  created_at           DateTime?          @default(now())
+  updated_at           DateTime?          @updatedAt
+  section              sections           @relation(fields: [section_id], references: [id])
+  student_sections     student_sections[]
+}
+
+model student_sections {
+  id               BigInt                  @id @default(autoincrement())
+  student_id       BigInt
+  batch_id         BigInt
+  start_date       DateTime?               @db.Date
+  end_date         DateTime?               @db.Date
+  status           String                  @default("Active") @db.VarChar(30)
+  progress_percent Decimal                 @default(0.00) @db.Decimal(5, 2)
+  self_placed      String?                 @db.VarChar(10)
+  created_by       BigInt
+  updated_by       BigInt
+  created_at       DateTime?               @default(now())
+  updated_at       DateTime?               @updatedAt
+  batch            program_section_batches @relation(fields: [batch_id], references: [id])
+  student_section_modules student_section_modules[]
+
+  @@unique([student_id, batch_id])
+}
+
+model student_section_modules {
+  id                          BigInt          @id @default(autoincrement())
+  student_id                  BigInt?
+  student_section_id          BigInt
+  module_id                   BigInt
+  status                      String          @default("Locked") @db.VarChar(30)
+  unlock_requested            Boolean         @default(false)
+  unlock_requested_by         BigInt?
+  unlock_requested_at         DateTime?
+  unlocked_by                 BigInt?
+  unlocked_at                 DateTime?
+  marks_scored                Int?
+  total_marks                 Int?
+  percentage                  Decimal?        @db.Decimal(5, 2)
+  remarks                     String?         @db.Text
+  evaluated_by                BigInt?
+  evaluated_at                DateTime?
+  performance                 String?         @db.VarChar(30)
+  performance_description     String?         @db.Text
+  performance_created_by      BigInt?
+  performance_created_at      DateTime?
+  created_at                  DateTime?       @default(now())
+  updated_at                  DateTime?       @updatedAt
+  student_section             student_sections @relation(fields: [student_section_id], references: [id])
+  module                      modules         @relation(fields: [module_id], references: [id])
+  student_section_module_topics student_section_module_topics[]
+
+  @@unique([student_section_id, module_id])
+}
+
+model student_section_module_topics {
+  id                          BigInt                  @id @default(autoincrement())
+  student_id                  BigInt
+  student_section_module_id   BigInt
+  topic_id                    BigInt
+  status                      String                  @default("new") @db.VarChar(30)
+  created_by                  BigInt?
+  created_at                  DateTime?               @default(now())
+  topic_started_by            BigInt?
+  topic_started_at            DateTime?
+  topic_last_accessed_at      DateTime?
+  topic_completed_at          DateTime?
+  student_section_module      student_section_modules @relation(fields: [student_section_module_id], references: [id])
+  topic                       topics                  @relation(fields: [topic_id], references: [id])
+}
+
+model program_extensions {
+  id                 BigInt    @id @default(autoincrement())
+  student_section_id BigInt
+  requested_by       BigInt
+  reason             String    @db.Text
+  extension_months   Int
+  status             String    @default("Pending") @db.VarChar(30)
+  reviewed_by        BigInt?
+  reviewed_at        DateTime?
+  created_at         DateTime? @default(now())
+  updated_at         DateTime? @updatedAt
+}
+
 model institution_users {
   id                       BigInt            @id @default(autoincrement())
   role_id                  BigInt
@@ -82,4 +288,15 @@ model institution_users {
   created_at               DateTime?
   updated_at               DateTime?
   role                     institution_roles @relation(fields: [role_id], references: [id])
+  admin_notifications      admin_notifications[]
+}
+
+model admin_notifications {
+  id         BigInt             @id @default(autoincrement())
+  user_id    BigInt?
+  message    String             @db.Text
+  status     String             @default("new") @db.VarChar(30)
+  created_at DateTime?          @default(now())
+  updated_at DateTime?          @updatedAt
+  user       institution_users? @relation(fields: [user_id], references: [id])
 }

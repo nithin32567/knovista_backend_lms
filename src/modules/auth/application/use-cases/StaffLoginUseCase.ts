@@ -44,7 +44,9 @@ export class StaffLoginUseCase {
     return {
       token,
       tokenType: 'bearer',
+      token_type: 'bearer',
       expiresIn: env.JWT_TTL,
+      expires_in: env.JWT_TTL,
       user: {
         id: staff.id,
         firstName: staff.firstName,
@@ -52,6 +54,26 @@ export class StaffLoginUseCase {
         email: staff.email,
         username: staff.username,
         role: staff.roleName,
+        first_name: staff.firstName,
+        last_name: staff.lastName,
+        mobile_no: staff.mobileNo,
+        gender: staff.gender,
+        status: staff.status,
+        role_id: staff.roleId,
+        profile_pic: null,
+        date_of_birth: null,
+        created_at: staff.createdAt ? staff.createdAt.toISOString() : null,
+        last_login_on: staff.lastLoginOn ? staff.lastLoginOn.toISOString() : null,
+        address: null,
+        location: null,
+        pincode: null,
+        state: null,
+        qualification: null,
+      },
+      role: {
+        id: staff.roleId,
+        name: staff.roleName,
+        status: 'Active',
       },
     };
   }

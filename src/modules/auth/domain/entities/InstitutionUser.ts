@@ -70,6 +70,14 @@ export class InstitutionUser {
     return this.props.lastLoginOn;
   }
 
+  get createdAt(): Date | null {
+    return this.props.createdAt;
+  }
+
+  get updatedAt(): Date | null {
+    return this.props.updatedAt;
+  }
+
   public isEligibleForLogin(): boolean {
     return this.props.status === 'Active';
   }
