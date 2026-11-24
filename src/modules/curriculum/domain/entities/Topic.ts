@@ -1,4 +1,4 @@
-export type TopicType = 'video' | 'file' | 'mcq' | 'assignment';
+export type TopicType = 'video' | 'file' | 'mcq' | 'assignment' | 'Video' | 'File' | 'MCQ' | 'Assignment';
 
 export interface TopicModuleInfo {
   id: number;
@@ -20,7 +20,11 @@ export interface TopicProps {
   moduleId: number;
   name: string;
   description: string | null;
-  type: TopicType;
+  type: string;
+  coverImage?: string | null | undefined;
+  fileUrl?: string | null | undefined;
+  dayCount?: number | null | undefined;
+  priority?: number | null | undefined;
   contentUrl: string | null;
   order: number;
   status: string;
@@ -39,7 +43,11 @@ export class Topic {
   get moduleId(): number { return this.props.moduleId; }
   get name(): string { return this.props.name; }
   get description(): string | null { return this.props.description; }
-  get type(): TopicType { return this.props.type; }
+  get type(): string { return this.props.type; }
+  get coverImage(): string | null | undefined { return this.props.coverImage; }
+  get fileUrl(): string | null | undefined { return this.props.fileUrl; }
+  get dayCount(): number | null | undefined { return this.props.dayCount; }
+  get priority(): number | null | undefined { return this.props.priority; }
   get contentUrl(): string | null { return this.props.contentUrl; }
   get order(): number { return this.props.order; }
   get status(): string { return this.props.status; }
@@ -53,6 +61,7 @@ export class Topic {
   toResponseObject() {
     const sectionInfo = this.props.module?.section;
     const programInfo = sectionInfo?.program;
+    const resolvedFileUrl = this.fileUrl ?? this.contentUrl;
 
     return {
       id: this.id,
@@ -60,11 +69,12 @@ export class Topic {
       name: this.name,
       description: this.description,
       type: this.type,
-      file_url: this.contentUrl,
-      content_url: this.contentUrl,
-      cover_image: null,
-      priority: this.order,
-      order: this.order,
+      file_url: resolvedFileUrl,
+      content_url: resolvedFileUrl,
+      cover_image: this.coverImage ?? null,
+      day_count: this.dayCount ?? 1,
+      priority: this.priority ?? this.order,
+      order: this.order ?? this.priority ?? 0,
       status: this.status,
       created_by: this.createdBy,
       updated_by: this.updatedBy,

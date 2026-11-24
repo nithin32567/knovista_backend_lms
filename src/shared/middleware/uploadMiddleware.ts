@@ -109,3 +109,46 @@ export function handleSectionUpload(req: Request, res: Response, next: NextFunct
     next();
   });
 }
+
+const topicsUploadsDir = path.join(process.cwd(), 'uploads', 'topics');
+if (!fs.existsSync(topicsUploadsDir)) {
+  fs.mkdirSync(topicsUploadsDir, { recursive: true });
+}
+
+const topicStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, topicsUploadsDir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+  },
+});
+
+const topicUpload = multer({
+  storage: topicStorage,
+  limits: {
+    fileSize: 50 * 1024 * 1024,
+  },
+});
+
+export function handleTopicUpload(req: Request, res: Response, next: NextFunction): void {
+  const contentType = req.headers['content-type'] ?? '';
+  if (!contentType.includes('multipart/form-data')) {
+    next();
+    return;
+  }
+
+  topicUpload.fields([
+    { name: 'cover_image', maxCount: 1 },
+    { name: 'file_upload', maxCount: 1 },
+    { name: 'file', maxCount: 1 },
+  ])(req, res, (err: unknown) => {
+    if (err) {
+      next(err);
+      return;
+    }
+    next();
+  });
+}

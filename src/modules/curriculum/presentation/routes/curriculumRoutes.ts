@@ -38,7 +38,7 @@ import { SpecialCategoryController } from '../controllers/SpecialCategoryControl
 
 import { authenticate } from '../../../../shared/middleware/authenticate';
 import { validateRequest } from '../../../../shared/middleware/validateRequest';
-import { handleProgramUpload, handleSectionUpload } from '../../../../shared/middleware/uploadMiddleware';
+import { handleProgramUpload, handleSectionUpload, handleTopicUpload } from '../../../../shared/middleware/uploadMiddleware';
 import { CreateProgramSchema, UpdateProgramSchema } from '../../application/dto/ProgramDTO';
 import { CreateSectionSchema, UpdateSectionSchema } from '../../application/dto/SectionDTO';
 import { CreateModuleSchema, UpdateModuleSchema } from '../../application/dto/ModuleDTO';
@@ -155,10 +155,31 @@ export function createCurriculumRouter(): Router {
   router.post('/modules/:id/update', validateRequest(UpdateModuleSchema), moduleController.update);
 
   router.get('/topics', topicController.index);
-  router.post('/topics', validateRequest(CreateTopicSchema), topicController.store);
+  router.post(
+    '/topics',
+    handleTopicUpload,
+    validateRequest(CreateTopicSchema),
+    topicController.store
+  );
   router.get('/topics/:id', topicController.show);
-  router.put('/topics/:id', validateRequest(UpdateTopicSchema), topicController.update);
-  router.post('/topics/:id/update', validateRequest(UpdateTopicSchema), topicController.update);
+  router.put(
+    '/topics/:id',
+    handleTopicUpload,
+    validateRequest(UpdateTopicSchema),
+    topicController.update
+  );
+  router.post(
+    '/topics/:id',
+    handleTopicUpload,
+    validateRequest(UpdateTopicSchema),
+    topicController.update
+  );
+  router.post(
+    '/topics/:id/update',
+    handleTopicUpload,
+    validateRequest(UpdateTopicSchema),
+    topicController.update
+  );
 
   router.get('/special-categories', specialCategoryController.index);
   router.post('/special-categories', validateRequest(CreateSpecialCategorySchema), specialCategoryController.store);
