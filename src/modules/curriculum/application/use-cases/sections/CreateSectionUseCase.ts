@@ -15,11 +15,23 @@ export class CreateSectionUseCase {
       throw new NotFoundError('Selected program does not exist');
     }
 
+    const durationInMonths = input.duration_in_months !== undefined && input.duration_in_months !== null
+      ? input.duration_in_months
+      : (input.duration ? parseInt(input.duration, 10) || null : null);
+
     const data: CreateSectionData = {
       programId: input.program_id,
+      code: input.code ?? null,
       name: input.name,
       description: input.description ?? null,
-      durationInMonths: input.duration_in_months ?? null,
+      icon: input.icon ?? null,
+      coverImage: input.cover_image ?? null,
+      duration: input.duration ?? (durationInMonths ? String(durationInMonths) : null),
+      durationInMonths,
+      amount: input.amount ?? 0,
+      priority: input.priority ?? 0,
+      status: input.status ?? 'Active',
+      isDemo: input.is_demo ?? false,
       createdBy: creatorId,
       updatedBy: creatorId,
     };
@@ -28,4 +40,3 @@ export class CreateSectionUseCase {
     return section.toResponseObject();
   }
 }
-

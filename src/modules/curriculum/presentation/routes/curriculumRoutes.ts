@@ -38,6 +38,7 @@ import { SpecialCategoryController } from '../controllers/SpecialCategoryControl
 
 import { authenticate } from '../../../../shared/middleware/authenticate';
 import { validateRequest } from '../../../../shared/middleware/validateRequest';
+import { handleProgramUpload, handleSectionUpload } from '../../../../shared/middleware/uploadMiddleware';
 import { CreateProgramSchema, UpdateProgramSchema } from '../../application/dto/ProgramDTO';
 import { CreateSectionSchema, UpdateSectionSchema } from '../../application/dto/SectionDTO';
 import { CreateModuleSchema, UpdateModuleSchema } from '../../application/dto/ModuleDTO';
@@ -94,16 +95,58 @@ export function createCurriculumRouter(): Router {
   );
 
   router.get('/programs', programController.index);
-  router.post('/programs', validateRequest(CreateProgramSchema), programController.store);
+  router.post(
+    '/programs',
+    handleProgramUpload,
+    validateRequest(CreateProgramSchema),
+    programController.store
+  );
   router.get('/programs/:id', programController.show);
-  router.put('/programs/:id', validateRequest(UpdateProgramSchema), programController.update);
-  router.post('/programs/:id/update', validateRequest(UpdateProgramSchema), programController.update);
+  router.put(
+    '/programs/:id',
+    handleProgramUpload,
+    validateRequest(UpdateProgramSchema),
+    programController.update
+  );
+  router.post(
+    '/programs/:id',
+    handleProgramUpload,
+    validateRequest(UpdateProgramSchema),
+    programController.update
+  );
+  router.post(
+    '/programs/:id/update',
+    handleProgramUpload,
+    validateRequest(UpdateProgramSchema),
+    programController.update
+  );
 
   router.get('/sections', sectionController.index);
-  router.post('/sections', validateRequest(CreateSectionSchema), sectionController.store);
+  router.post(
+    '/sections',
+    handleSectionUpload,
+    validateRequest(CreateSectionSchema),
+    sectionController.store
+  );
   router.get('/sections/:id', sectionController.show);
-  router.put('/sections/:id', validateRequest(UpdateSectionSchema), sectionController.update);
-  router.post('/sections/:id/update', validateRequest(UpdateSectionSchema), sectionController.update);
+  router.put(
+    '/sections/:id',
+    handleSectionUpload,
+    validateRequest(UpdateSectionSchema),
+    sectionController.update
+  );
+  router.post(
+    '/sections/:id',
+    handleSectionUpload,
+    validateRequest(UpdateSectionSchema),
+    sectionController.update
+  );
+  router.post(
+    '/sections/:id/update',
+    handleSectionUpload,
+    validateRequest(UpdateSectionSchema),
+    sectionController.update
+  );
 
   router.get('/modules', moduleController.index);
   router.post('/modules', validateRequest(CreateModuleSchema), moduleController.store);

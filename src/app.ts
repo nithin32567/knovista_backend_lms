@@ -1,6 +1,7 @@
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import path from 'path';
 import { env } from './config/env';
 import { errorHandler } from './shared/middleware/errorHandler';
 import { sendSuccess } from './shared/utils/response';
@@ -12,11 +13,13 @@ import { createCurriculumRouter } from './modules/curriculum/presentation/routes
 import { createBatchRouter } from './modules/batch/presentation/routes/batchRoutes';
 import { createNotificationRouter } from './modules/notification/presentation/routes/notificationRoutes';
 import { createProgressRouter } from './modules/progress/presentation/routes/progressRoutes';
+import { createAssessmentRouter } from './modules/assessment/presentation/routes/assessmentRoutes';
+import { createFinanceRouter } from './modules/finance/presentation/routes/financeRoutes';
 
 export function createApp(): Express {
   const app = express();
 
-  app.use(helmet());
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
   const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
   app.use(
@@ -30,6 +33,7 @@ export function createApp(): Express {
 
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use('/storage', express.static(path.join(process.cwd(), 'uploads')));
 
   app.get('/health', (_req: Request, res: Response) => {
     sendSuccess(
@@ -85,6 +89,16 @@ export function createApp(): Express {
   app.use(env.API_PREFIX, progressRouter);
   app.use('/api', progressRouter);
   app.use('/', progressRouter);
+
+  const assessmentRouter = createAssessmentRouter();
+  app.use(env.API_PREFIX, assessmentRouter);
+  app.use('/api', assessmentRouter);
+  app.use('/', assessmentRouter);
+
+  const financeRouter = createFinanceRouter();
+  app.use(env.API_PREFIX, financeRouter);
+  app.use('/api', financeRouter);
+  app.use('/', financeRouter);
 
   app.use(errorHandler);
 

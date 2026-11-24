@@ -16,13 +16,29 @@ export class PrismaModuleRepository implements IModuleRepository {
 
     const records = await this.prisma.modules.findMany({
       where,
+      include: {
+        section: {
+          include: {
+            program: true,
+          },
+        },
+      },
       orderBy: [{ order: 'asc' }, { created_at: 'desc' }],
     });
     return records.map((r) => this.mapToDomain(r));
   }
 
   async findById(id: number): Promise<CourseModule | null> {
-    const record = await this.prisma.modules.findUnique({ where: { id: BigInt(id) } });
+    const record = await this.prisma.modules.findUnique({
+      where: { id: BigInt(id) },
+      include: {
+        section: {
+          include: {
+            program: true,
+          },
+        },
+      },
+    });
     if (!record) return null;
     return this.mapToDomain(record);
   }
@@ -39,6 +55,13 @@ export class PrismaModuleRepository implements IModuleRepository {
         status: 'Active',
         created_by: BigInt(data.createdBy),
         updated_by: BigInt(data.updatedBy),
+      },
+      include: {
+        section: {
+          include: {
+            program: true,
+          },
+        },
       },
     });
     return this.mapToDomain(record);
@@ -68,6 +91,13 @@ export class PrismaModuleRepository implements IModuleRepository {
     const record = await this.prisma.modules.update({
       where: { id: BigInt(id) },
       data: updateData,
+      include: {
+        section: {
+          include: {
+            program: true,
+          },
+        },
+      },
     });
     return this.mapToDomain(record);
   }
@@ -83,6 +113,14 @@ export class PrismaModuleRepository implements IModuleRepository {
     updated_by: bigint;
     created_at: Date | null;
     updated_at: Date | null;
+    section?: {
+      id: bigint;
+      name: string;
+      program?: {
+        id: bigint;
+        name: string;
+      } | null | undefined;
+    } | null | undefined;
   }): CourseModule {
     const props: CourseModuleProps = {
       id: Number(raw.id),
@@ -95,6 +133,16 @@ export class PrismaModuleRepository implements IModuleRepository {
       updatedBy: Number(raw.updated_by),
       createdAt: raw.created_at,
       updatedAt: raw.updated_at,
+      section: raw.section ? {
+        id: Number(raw.section.id),
+        code: `SEC-${raw.section.id}`,
+        name: raw.section.name,
+        program: raw.section.program ? {
+          id: Number(raw.section.program.id),
+          code: `PROG-${raw.section.program.id}`,
+          name: raw.section.program.name,
+        } : undefined,
+      } : undefined,
     };
     return new CourseModule(props);
   }

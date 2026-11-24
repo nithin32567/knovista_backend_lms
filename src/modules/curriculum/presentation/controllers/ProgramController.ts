@@ -11,13 +11,13 @@ export class ProgramController {
     private readonly listProgramsUseCase: ListProgramsUseCase,
     private readonly createProgramUseCase: CreateProgramUseCase,
     private readonly getProgramUseCase: GetProgramUseCase,
-    private readonly updateProgramUseCase: UpdateProgramUseCase
+    private readonly updateProgramUseCase: UpdateProgramUseCase,
   ) {}
 
   index = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const query = ProgramQuerySchema.parse(req.query);
-      const programs = await this.listProgramsUseCase.execute(query.status);
+      const programs = await this.listProgramsUseCase.execute(query);
       sendSuccess(res, programs, 'Programs retrieved successfully');
     } catch (error) {
       next(error);
@@ -28,7 +28,18 @@ export class ProgramController {
     try {
       const input = req.body as CreateProgramInput;
       const creatorId = req.user?.id ?? 1;
-      const program = await this.createProgramUseCase.execute(input, creatorId);
+
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+      const iconFile = files?.['icon']?.[0];
+      const coverFile = files?.['cover_image']?.[0];
+
+      const iconPath = iconFile ? `/storage/programs/${iconFile.filename}` : undefined;
+      const coverPath = coverFile ? `/storage/programs/${coverFile.filename}` : undefined;
+
+      const program = await this.createProgramUseCase.execute(input, creatorId, {
+        icon: iconPath,
+        coverImage: coverPath,
+      });
       sendSuccess(res, program, 'Program created successfully', 201);
     } catch (error) {
       next(error);
@@ -50,11 +61,21 @@ export class ProgramController {
       const id = parseInt(req.params['id'] ?? '0', 10);
       const input = req.body as UpdateProgramInput;
       const updaterId = req.user?.id ?? 1;
-      const program = await this.updateProgramUseCase.execute(id, input, updaterId);
+
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+      const iconFile = files?.['icon']?.[0];
+      const coverFile = files?.['cover_image']?.[0];
+
+      const iconPath = iconFile ? `/storage/programs/${iconFile.filename}` : undefined;
+      const coverPath = coverFile ? `/storage/programs/${coverFile.filename}` : undefined;
+
+      const program = await this.updateProgramUseCase.execute(id, input, updaterId, {
+        icon: iconPath,
+        coverImage: coverPath,
+      });
       sendSuccess(res, program, 'Program updated successfully');
     } catch (error) {
       next(error);
     }
   };
 }
-

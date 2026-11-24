@@ -1,3 +1,14 @@
+export interface CourseModuleSectionInfo {
+  id: number;
+  code: string;
+  name: string;
+  program?: {
+    id: number;
+    code: string;
+    name: string;
+  } | undefined;
+}
+
 export interface CourseModuleProps {
   id: number;
   sectionId: number;
@@ -9,6 +20,7 @@ export interface CourseModuleProps {
   updatedBy: number;
   createdAt: Date | null;
   updatedAt: Date | null;
+  section?: CourseModuleSectionInfo | undefined;
 }
 
 export class CourseModule {
@@ -24,6 +36,7 @@ export class CourseModule {
   get updatedBy(): number { return this.props.updatedBy; }
   get createdAt(): Date | null { return this.props.createdAt; }
   get updatedAt(): Date | null { return this.props.updatedAt; }
+  get section(): CourseModuleSectionInfo | undefined { return this.props.section; }
 
   toResponseObject() {
     return {
@@ -31,13 +44,23 @@ export class CourseModule {
       section_id: this.sectionId,
       name: this.name,
       description: this.description,
+      priority: this.order,
       order: this.order,
       status: this.status,
       created_by: this.createdBy,
       updated_by: this.updatedBy,
       created_at: this.createdAt ? this.createdAt.toISOString() : null,
       updated_at: this.updatedAt ? this.updatedAt.toISOString() : null,
+      section: this.props.section ?? {
+        id: this.sectionId,
+        code: `SEC-${this.sectionId}`,
+        name: '',
+        program: {
+          id: 0,
+          code: '',
+          name: '',
+        },
+      },
     };
   }
 }
-

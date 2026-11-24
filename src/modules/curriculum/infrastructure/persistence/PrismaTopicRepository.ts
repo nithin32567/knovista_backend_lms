@@ -19,13 +19,39 @@ export class PrismaTopicRepository implements ITopicRepository {
 
     const records = await this.prisma.topics.findMany({
       where,
+      include: {
+        module: {
+          include: {
+            section: {
+              include: {
+                program: true,
+              },
+            },
+          },
+        },
+        topic_assessments: true,
+      },
       orderBy: [{ order: 'asc' }, { created_at: 'desc' }],
     });
     return records.map((r) => this.mapToDomain(r));
   }
 
   async findById(id: number): Promise<Topic | null> {
-    const record = await this.prisma.topics.findUnique({ where: { id: BigInt(id) } });
+    const record = await this.prisma.topics.findUnique({
+      where: { id: BigInt(id) },
+      include: {
+        module: {
+          include: {
+            section: {
+              include: {
+                program: true,
+              },
+            },
+          },
+        },
+        topic_assessments: true,
+      },
+    });
     if (!record) return null;
     return this.mapToDomain(record);
   }
@@ -44,6 +70,18 @@ export class PrismaTopicRepository implements ITopicRepository {
         status: 'Active',
         created_by: BigInt(data.createdBy),
         updated_by: BigInt(data.updatedBy),
+      },
+      include: {
+        module: {
+          include: {
+            section: {
+              include: {
+                program: true,
+              },
+            },
+          },
+        },
+        topic_assessments: true,
       },
     });
     return this.mapToDomain(record);
@@ -79,6 +117,18 @@ export class PrismaTopicRepository implements ITopicRepository {
     const record = await this.prisma.topics.update({
       where: { id: BigInt(id) },
       data: updateData,
+      include: {
+        module: {
+          include: {
+            section: {
+              include: {
+                program: true,
+              },
+            },
+          },
+        },
+        topic_assessments: true,
+      },
     });
     return this.mapToDomain(record);
   }
@@ -96,13 +146,40 @@ export class PrismaTopicRepository implements ITopicRepository {
     updated_by: bigint;
     created_at: Date | null;
     updated_at: Date | null;
+    module?: {
+      id: bigint;
+      name: string;
+      section?: {
+        id: bigint;
+        name: string;
+        program?: {
+          id: bigint;
+          name: string;
+        } | null | undefined;
+      } | null | undefined;
+    } | null | undefined;
+    topic_assessments?: Array<{
+      id: bigint;
+      question: string;
+      options: unknown;
+      answer: unknown;
+      correct_answer: string | null;
+      marks: number;
+      priority: number | null;
+      status: string;
+    }> | undefined;
   }): Topic {
+    const validTypes: TopicType[] = ['video', 'file', 'mcq', 'assignment'];
+    const resolvedType: TopicType = validTypes.includes(raw.type as TopicType)
+      ? (raw.type as TopicType)
+      : 'video';
+
     const props: TopicProps = {
       id: Number(raw.id),
       moduleId: Number(raw.module_id),
       name: raw.name,
       description: raw.description,
-      type: raw.type as TopicType,
+      type: resolvedType,
       contentUrl: raw.content_url,
       order: raw.order,
       status: raw.status,
@@ -110,6 +187,30 @@ export class PrismaTopicRepository implements ITopicRepository {
       updatedBy: Number(raw.updated_by),
       createdAt: raw.created_at,
       updatedAt: raw.updated_at,
+      module: raw.module ? {
+        id: Number(raw.module.id),
+        name: raw.module.name,
+        section: raw.module.section ? {
+          id: Number(raw.module.section.id),
+          code: `SEC-${raw.module.section.id}`,
+          name: raw.module.section.name,
+          program: raw.module.section.program ? {
+            id: Number(raw.module.section.program.id),
+            code: `PROG-${raw.module.section.program.id}`,
+            name: raw.module.section.program.name,
+          } : undefined,
+        } : undefined,
+      } : undefined,
+      assessments: raw.topic_assessments ? raw.topic_assessments.map((a) => ({
+        id: Number(a.id),
+        question: a.question,
+        options: a.options,
+        answer: a.answer,
+        correct_answer: a.correct_answer,
+        marks: a.marks,
+        priority: a.priority ?? 1,
+        status: a.status,
+      })) : undefined,
     };
     return new Topic(props);
   }

@@ -28,7 +28,20 @@ export class SectionController {
     try {
       const input = req.body as CreateSectionInput;
       const creatorId = req.user?.id ?? 1;
-      const section = await this.createSectionUseCase.execute(input, creatorId);
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+      const iconFile = files?.['icon']?.[0];
+      const coverImageFile = files?.['cover_image']?.[0];
+      const icon = iconFile ? `/storage/sections/${iconFile.filename}` : (input.icon ?? undefined);
+      const coverImage = coverImageFile ? `/storage/sections/${coverImageFile.filename}` : (input.cover_image ?? undefined);
+
+      const section = await this.createSectionUseCase.execute(
+        {
+          ...input,
+          icon,
+          cover_image: coverImage,
+        },
+        creatorId
+      );
       sendSuccess(res, section, 'Section created successfully', 201);
     } catch (error) {
       next(error);
@@ -50,11 +63,24 @@ export class SectionController {
       const id = parseInt(req.params['id'] ?? '0', 10);
       const input = req.body as UpdateSectionInput;
       const updaterId = req.user?.id ?? 1;
-      const section = await this.updateSectionUseCase.execute(id, input, updaterId);
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+      const iconFile = files?.['icon']?.[0];
+      const coverImageFile = files?.['cover_image']?.[0];
+      const icon = iconFile ? `/storage/sections/${iconFile.filename}` : input.icon;
+      const coverImage = coverImageFile ? `/storage/sections/${coverImageFile.filename}` : input.cover_image;
+
+      const section = await this.updateSectionUseCase.execute(
+        id,
+        {
+          ...input,
+          ...(icon !== undefined ? { icon } : {}),
+          ...(coverImage !== undefined ? { cover_image: coverImage } : {}),
+        },
+        updaterId
+      );
       sendSuccess(res, section, 'Section updated successfully');
     } catch (error) {
       next(error);
     }
   };
 }
-

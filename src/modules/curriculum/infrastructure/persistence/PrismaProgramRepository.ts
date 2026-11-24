@@ -1,14 +1,24 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-import { IProgramRepository, CreateProgramData, UpdateProgramData } from '../../domain/repositories/IProgramRepository';
+import {
+  IProgramRepository,
+  CreateProgramData,
+  UpdateProgramData,
+  ProgramFilter,
+} from '../../domain/repositories/IProgramRepository';
 import { Program, ProgramProps } from '../../domain/entities/Program';
 
 export class PrismaProgramRepository implements IProgramRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async findMany(status?: string | undefined): Promise<Program[]> {
+  async findMany(filter?: ProgramFilter | string | undefined): Promise<Program[]> {
     const where: Prisma.programsWhereInput = {};
-    if (status) {
-      where.status = status;
+    if (typeof filter === 'string') {
+      where.status = filter;
+    } else if (filter) {
+      if (filter.status) where.status = filter.status;
+      if (filter.language) where.language = filter.language;
+      if (filter.code) where.code = { contains: filter.code };
+      if (filter.name) where.name = { contains: filter.name };
     }
 
     const records = await this.prisma.programs.findMany({
@@ -27,9 +37,13 @@ export class PrismaProgramRepository implements IProgramRepository {
   async create(data: CreateProgramData): Promise<Program> {
     const record = await this.prisma.programs.create({
       data: {
+        code: data.code ?? null,
         name: data.name,
         description: data.description ?? null,
-        status: 'Active',
+        language: data.language ?? 'English',
+        icon: data.icon ?? null,
+        cover_image: data.coverImage ?? null,
+        status: data.status ?? 'Active',
         created_by: BigInt(data.createdBy),
         updated_by: BigInt(data.updatedBy),
       },
@@ -45,11 +59,23 @@ export class PrismaProgramRepository implements IProgramRepository {
       updated_by: BigInt(data.updatedBy),
     };
 
+    if (data.code !== undefined) {
+      updateData.code = data.code;
+    }
     if (data.name !== undefined) {
       updateData.name = data.name;
     }
     if (data.description !== undefined) {
       updateData.description = data.description;
+    }
+    if (data.language !== undefined) {
+      updateData.language = data.language;
+    }
+    if (data.icon !== undefined) {
+      updateData.icon = data.icon;
+    }
+    if (data.coverImage !== undefined) {
+      updateData.cover_image = data.coverImage;
     }
     if (data.status !== undefined) {
       updateData.status = data.status;
@@ -64,8 +90,12 @@ export class PrismaProgramRepository implements IProgramRepository {
 
   private mapToDomain(raw: {
     id: bigint;
+    code: string | null;
     name: string;
     description: string | null;
+    language: string;
+    icon: string | null;
+    cover_image: string | null;
     status: string;
     created_by: bigint;
     updated_by: bigint;
@@ -74,8 +104,12 @@ export class PrismaProgramRepository implements IProgramRepository {
   }): Program {
     const props: ProgramProps = {
       id: Number(raw.id),
+      code: raw.code,
       name: raw.name,
       description: raw.description,
+      language: raw.language,
+      icon: raw.icon,
+      coverImage: raw.cover_image,
       status: raw.status,
       createdBy: Number(raw.created_by),
       updatedBy: Number(raw.updated_by),

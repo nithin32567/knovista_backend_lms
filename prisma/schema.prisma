@@ -69,8 +69,12 @@ model password_reset_tokens {
 
 model programs {
   id          BigInt     @id @default(autoincrement())
+  code        String?    @unique @db.VarChar(50)
   name        String     @db.VarChar(150)
   description String?    @db.Text
+  language    String     @default("English") @db.VarChar(50)
+  icon        String?    @db.VarChar(255)
+  cover_image String?    @db.VarChar(255)
   status      String     @default("Active") @db.VarChar(30)
   created_by  BigInt
   updated_by  BigInt
@@ -82,10 +86,17 @@ model programs {
 model sections {
   id                    BigInt                  @id @default(autoincrement())
   program_id            BigInt
+  code                  String?                 @unique @db.VarChar(50)
   name                  String                  @db.VarChar(150)
+  icon                  String?                 @db.VarChar(255)
+  cover_image           String?                 @db.VarChar(255)
+  duration              String?                 @db.VarChar(50)
+  amount                Decimal?                @default(0.00) @db.Decimal(10, 2)
+  priority              Int?                    @default(0)
   description           String?                 @db.Text
   duration_in_months    Int?
   status                String                  @default("Active") @db.VarChar(30)
+  is_demo               Boolean                 @default(false)
   created_by            BigInt
   updated_by            BigInt
   created_at            DateTime?               @default(now())
@@ -117,6 +128,10 @@ model topics {
   name         String        @db.VarChar(200)
   description  String?       @db.Text
   type         String        @default("video") @db.VarChar(30)
+  cover_image  String?       @db.VarChar(255)
+  file_url     String?       @db.VarChar(500)
+  day_count    Int?          @default(1)
+  priority     Int?          @default(0)
   content_url  String?       @db.VarChar(500)
   order        Int           @default(0)
   status       String        @default("Active") @db.VarChar(30)
@@ -146,13 +161,30 @@ model topic_assessments {
   topic_id        BigInt
   question        String   @db.Text
   options         Json
-  correct_answer  String   @db.VarChar(10)
+  answer          Json?
+  correct_answer  String?  @db.VarChar(10)
   marks           Int      @default(1)
-  created_by      BigInt
-  updated_by      BigInt
+  priority        Int?     @default(1)
+  status          String   @default("Active") @db.VarChar(30)
+  created_by      BigInt?
+  updated_by      BigInt?
   created_at      DateTime? @default(now())
   updated_at      DateTime? @updatedAt
   topic           topics   @relation(fields: [topic_id], references: [id])
+  student_topic_assessment_answers student_topic_assessment_answers[]
+}
+
+model student_topic_assessment_answers {
+  id                  BigInt            @id @default(autoincrement())
+  student_id          BigInt
+  student_topic_id    BigInt
+  topic_id            BigInt
+  topic_assessment_id BigInt
+  answer              String?           @db.Text
+  marks               Boolean           @default(false)
+  created_at          DateTime?         @default(now())
+  updated_at          DateTime?         @updatedAt
+  topic_assessment    topic_assessments @relation(fields: [topic_assessment_id], references: [id])
 }
 
 model special_categories {
@@ -299,4 +331,48 @@ model admin_notifications {
   created_at DateTime?          @default(now())
   updated_at DateTime?          @updatedAt
   user       institution_users? @relation(fields: [user_id], references: [id])
+}
+
+model fee_collections {
+  id                 BigInt                     @id @default(autoincrement())
+  student_id         BigInt
+  student_section_id BigInt?
+  installment_no     Int
+  fee_amount         Decimal                    @default(0.00) @db.Decimal(10, 2)
+  paid_amount        Decimal                    @default(0.00) @db.Decimal(10, 2)
+  balance_amount     Decimal                    @default(0.00) @db.Decimal(10, 2)
+  due_date           DateTime                   @db.Date
+  fee_status         String                     @default("pending") @db.VarChar(30)
+  approval_status    String                     @default("pending") @db.VarChar(30)
+  created_by         BigInt?
+  updated_by         BigInt?
+  collected_by       BigInt?
+  collected_at       DateTime?
+  auth_by            BigInt?
+  auth_at            DateTime?
+  auth_remark        String?                    @db.Text
+  created_at         DateTime?                  @default(now())
+  updated_at         DateTime?                  @updatedAt
+  histories          fee_collection_histories[]
+
+  @@index([student_id])
+  @@index([student_section_id])
+  @@index([fee_status])
+  @@index([approval_status])
+  @@index([due_date])
+}
+
+model fee_collection_histories {
+  id                BigInt          @id @default(autoincrement())
+  fee_collection_id BigInt
+  paid_amount       Decimal         @default(0.00) @db.Decimal(10, 2)
+  collected_by      BigInt?
+  collected_at      DateTime?
+  record_status     String          @default("active") @db.VarChar(20)
+  created_at        DateTime?       @default(now())
+  updated_at        DateTime?       @updatedAt
+  fee_collection    fee_collections @relation(fields: [fee_collection_id], references: [id], onDelete: Cascade)
+
+  @@index([fee_collection_id])
+  @@index([collected_at])
 }
