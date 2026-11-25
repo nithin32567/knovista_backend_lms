@@ -6,7 +6,7 @@ import { env } from './config/env';
 import { errorHandler } from './shared/middleware/errorHandler';
 import { sendSuccess } from './shared/utils/response';
 import { createAuthRouter } from './modules/auth/presentation/routes/authRoutes';
-import { createDashboardRouter } from './modules/dashboard/presentation/routes/dashboardRoutes';
+import { createDashboardRouter, createRootDashboardRouter } from './modules/dashboard/presentation/routes/dashboardRoutes';
 import { createStudentRouter } from './modules/students/presentation/routes/studentRoutes';
 import { createInstitutionUserRouter } from './modules/users/presentation/routes/institutionUserRoutes';
 import { createCurriculumRouter } from './modules/curriculum/presentation/routes/curriculumRoutes';
@@ -15,6 +15,7 @@ import { createNotificationRouter } from './modules/notification/presentation/ro
 import { createProgressRouter } from './modules/progress/presentation/routes/progressRoutes';
 import { createAssessmentRouter } from './modules/assessment/presentation/routes/assessmentRoutes';
 import { createFinanceRouter } from './modules/finance/presentation/routes/financeRoutes';
+import { createWelfareRouter } from './modules/welfare/presentation/routes/welfareRoutes';
 
 export function createApp(): Express {
   const app = express();
@@ -56,6 +57,11 @@ export function createApp(): Express {
   app.use(`${env.API_PREFIX}/dashboard`, dashboardRouter);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/dashboard', dashboardRouter);
+
+  const rootDashboardRouter = createRootDashboardRouter();
+  app.use(env.API_PREFIX, rootDashboardRouter);
+  app.use('/api', rootDashboardRouter);
+  app.use('/', rootDashboardRouter);
 
   const studentRouter = createStudentRouter();
   app.use(`${env.API_PREFIX}/students`, studentRouter);
@@ -99,6 +105,11 @@ export function createApp(): Express {
   app.use(env.API_PREFIX, financeRouter);
   app.use('/api', financeRouter);
   app.use('/', financeRouter);
+
+  const welfareRouter = createWelfareRouter();
+  app.use(env.API_PREFIX, welfareRouter);
+  app.use('/api', welfareRouter);
+  app.use('/', welfareRouter);
 
   app.use(errorHandler);
 

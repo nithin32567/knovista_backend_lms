@@ -1,6 +1,7 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-import { IStudentRepository, StudentFilterParams, CreateStudentParams } from '../../domain/repositories/IStudentRepository';
+import { IStudentRepository, StudentFilterParams, CreateStudentParams, UpdateStudentParams, BlockStudentParams, DropStudentParams } from '../../domain/repositories/IStudentRepository';
 import { Student, StudentProps } from '../../domain/entities/Student';
+import { StudentBlockReason } from '../../domain/entities/StudentBlockReason';
 
 export class PrismaStudentRepository implements IStudentRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -131,6 +132,149 @@ export class PrismaStudentRepository implements IStudentRepository {
     });
 
     return this.mapToDomain(record);
+  }
+
+  async update(id: number, data: UpdateStudentParams): Promise<Student> {
+    const updateData: Prisma.studentsUpdateInput = {
+      updated_by: BigInt(data.updatedBy),
+    };
+
+    if (data.firstName !== undefined) updateData.first_name = data.firstName;
+    if (data.lastName !== undefined) updateData.last_name = data.lastName;
+    if (data.gender !== undefined) updateData.gender = data.gender;
+    if (data.dateOfBirth !== undefined) updateData.date_of_birth = data.dateOfBirth;
+    if (data.mobileNo !== undefined) updateData.mobile_no = data.mobileNo;
+    if (data.alternateMobileNo !== undefined) updateData.alternate_mobile_no = data.alternateMobileNo;
+    if (data.parentMobileNo !== undefined) updateData.parent_mobile_no = data.parentMobileNo;
+    if (data.parentName !== undefined) updateData.parent_name = data.parentName;
+    if (data.address !== undefined) updateData.address = data.address;
+    if (data.location !== undefined) updateData.location = data.location;
+    if (data.pincode !== undefined) updateData.pincode = data.pincode;
+    if (data.state !== undefined) updateData.state = data.state;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.qualification !== undefined) updateData.qualification = data.qualification;
+    if (data.specialCategoryId !== undefined) {
+      updateData.special_category_id = data.specialCategoryId ? BigInt(data.specialCategoryId) : null;
+    }
+    if (data.salesPersonName !== undefined) updateData.sales_person_name = data.salesPersonName;
+    if (data.salesPersonPhone !== undefined) updateData.sales_person_phone = data.salesPersonPhone;
+    if (data.paidAmount !== undefined) updateData.paid_amount = data.paidAmount;
+
+    const record = await this.prisma.students.update({
+      where: { id: BigInt(id) },
+      data: updateData,
+    });
+
+    return this.mapToDomain(record);
+  }
+
+  async updateProfilePic(id: number, profilePicPath: string, updatedBy: number): Promise<void> {
+    await this.prisma.students.update({
+      where: { id: BigInt(id) },
+      data: { profile_pic: profilePicPath, updated_by: BigInt(updatedBy) },
+    });
+  }
+
+  async updateStatus(id: number, status: string, updatedBy: number): Promise<void> {
+    await this.prisma.students.update({
+      where: { id: BigInt(id) },
+      data: { status, updated_by: BigInt(updatedBy) },
+    });
+  }
+
+  async updateLoginStatus(id: number, loginStatus: string): Promise<void> {
+    await this.prisma.students.update({
+      where: { id: BigInt(id) },
+      data: { login_status: loginStatus, login_status_updated_at: new Date() },
+    });
+  }
+
+  async blockStudent(params: BlockStudentParams): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.students.update({
+        where: { id: BigInt(params.studentId) },
+        data: { status: 'Blocked', updated_by: BigInt(params.blockedBy) },
+      }),
+      this.prisma.student_block_histories.create({
+        data: {
+          student_id: BigInt(params.studentId),
+          reason_id: BigInt(params.reasonId),
+          description: params.description ?? null,
+          blocked_by: BigInt(params.blockedBy),
+          status: 'blocked',
+        },
+      }),
+    ]);
+  }
+
+  async unblockStudent(studentId: number, unblockedBy: number): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.students.update({
+        where: { id: BigInt(studentId) },
+        data: { status: 'Active', updated_by: BigInt(unblockedBy) },
+      }),
+      this.prisma.student_block_histories.updateMany({
+        where: { student_id: BigInt(studentId), status: 'blocked' },
+        data: { status: 'unblocked', unblocked_by: BigInt(unblockedBy) },
+      }),
+    ]);
+  }
+
+  async dropStudent(params: DropStudentParams): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.students.update({
+        where: { id: BigInt(params.studentId) },
+        data: { status: 'Dropped', updated_by: BigInt(params.droppedBy) },
+      }),
+      this.prisma.student_drop_histories.create({
+        data: {
+          student_id: BigInt(params.studentId),
+          reason: params.reason ?? null,
+          dropped_by: BigInt(params.droppedBy),
+        },
+      }),
+    ]);
+  }
+
+  async undropStudent(studentId: number, updatedBy: number): Promise<void> {
+    await this.prisma.students.update({
+      where: { id: BigInt(studentId) },
+      data: { status: 'Active', updated_by: BigInt(updatedBy) },
+    });
+  }
+
+  async unblockModules(studentId: number, studentSectionId: number): Promise<void> {
+    await this.prisma.student_section_modules.updateMany({
+      where: {
+        student_section_id: BigInt(studentSectionId),
+        student_section: { student_id: BigInt(studentId) },
+        status: 'Locked',
+      },
+      data: { status: 'Unlocked' },
+    });
+  }
+
+  async softDelete(id: number, deletedBy: number): Promise<void> {
+    await this.prisma.students.update({
+      where: { id: BigInt(id) },
+      data: { status: 'Deleted', updated_by: BigInt(deletedBy) },
+    });
+  }
+
+  async findBlockReasons(): Promise<StudentBlockReason[]> {
+    const records = await this.prisma.student_block_reasons.findMany({
+      where: { status: 'active' },
+      orderBy: { name: 'asc' },
+    });
+    return records.map(
+      (r) =>
+        new StudentBlockReason({
+          id: Number(r.id),
+          name: r.name,
+          status: r.status,
+          createdAt: r.created_at,
+        })
+    );
   }
 
   private mapToDomain(raw: {

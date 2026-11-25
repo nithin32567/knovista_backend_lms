@@ -58,3 +58,124 @@ export const AdminResetStudentPasswordSchema = z
 
 export type AdminResetStudentPasswordInput = z.infer<typeof AdminResetStudentPasswordSchema>;
 
+export const UpdateStudentSchema = z.object({
+  first_name: z.string().trim().min(1).max(50).optional(),
+  last_name: z.string().trim().min(1).max(50).optional(),
+  gender: z.enum(['Male', 'Female', 'Other']).optional(),
+  date_of_birth: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  mobile_no: z.string().trim().max(15).optional(),
+  alternate_mobile_no: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  parent_mobile_no: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  parent_name: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  address: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  location: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  pincode: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  state: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  email: z.string().trim().email().max(100).optional(),
+  qualification: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  special_category_id: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? null : Number(val)),
+    z.number().nullable().optional()
+  ),
+  sales_person_name: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  sales_person_phone: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  paid_amount: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : Number(val)),
+    z.number().optional()
+  ),
+});
+
+export type UpdateStudentInput = z.infer<typeof UpdateStudentSchema>;
+
+export const UpdateStudentProfileSchema = z.object({
+  student_id: z.coerce.number().int().positive('Valid student ID is required'),
+  first_name: z.string().trim().min(1).max(50).optional(),
+  last_name: z.string().trim().min(1).max(50).optional(),
+  gender: z.enum(['Male', 'Female', 'Other']).optional(),
+  date_of_birth: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  mobile_no: z.string().trim().max(15).optional(),
+  alternate_mobile_no: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  parent_mobile_no: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  parent_name: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  address: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  location: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  pincode: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  state: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+  email: z.string().trim().email().max(100).optional(),
+  qualification: z.preprocess((val) => (val === '' ? null : val), z.string().nullable().optional()),
+});
+
+export type UpdateStudentProfileInput = z.infer<typeof UpdateStudentProfileSchema>;
+
+export const BlockStudentSchema = z.object({
+  student_id: z.coerce.number().int().positive('Valid student ID is required'),
+  reason_id: z.coerce.number().int().positive('Valid reason ID is required'),
+  description: z.string().optional(),
+});
+
+export type BlockStudentInput = z.infer<typeof BlockStudentSchema>;
+
+export const UnblockStudentSchema = z.object({
+  student_id: z.coerce.number().int().positive('Valid student ID is required'),
+});
+
+export type UnblockStudentInput = z.infer<typeof UnblockStudentSchema>;
+
+export const DropStudentSchema = z.object({
+  student_id: z.coerce.number().int().positive('Valid student ID is required'),
+  reason: z.string().optional(),
+});
+
+export type DropStudentInput = z.infer<typeof DropStudentSchema>;
+
+export const UndropStudentSchema = z.object({
+  student_id: z.coerce.number().int().positive('Valid student ID is required'),
+});
+
+export type UndropStudentInput = z.infer<typeof UndropStudentSchema>;
+
+export const DeleteStudentSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
+export type DeleteStudentInput = z.infer<typeof DeleteStudentSchema>;
+
+export const UnblockStudentModulesSchema = z.object({
+  student_id: z.coerce.number().int().positive('Valid student ID is required'),
+  student_section_id: z.coerce.number().int().positive('Valid student section ID is required'),
+});
+
+export type UnblockStudentModulesInput = z.infer<typeof UnblockStudentModulesSchema>;
+
+export const UpdateProfileImageSchema = z.object({
+  student_id: z.coerce.number().int().positive('Valid student ID is required'),
+});
+
+export type UpdateProfileImageInput = z.infer<typeof UpdateProfileImageSchema>;
+
+export const StudentDashboardQuerySchema = z.object({
+  student_id: z.coerce.number().int().positive('Valid student ID is required'),
+});
+
+export type StudentDashboardQueryInput = z.infer<typeof StudentDashboardQuerySchema>;
+
+export const StudentNotificationsQuerySchema = z.object({
+  student_id: z.coerce.number().int().positive('Valid student ID is required'),
+});
+
+export type StudentNotificationsQueryInput = z.infer<typeof StudentNotificationsQuerySchema>;
+
+export const MarkStudentNotificationsViewedSchema = z.object({
+  student_id: z.coerce.number().int().positive('Valid student ID is required'),
+});
+
+export type MarkStudentNotificationsViewedInput = z.infer<typeof MarkStudentNotificationsViewedSchema>;
+
+export const UpdateLoginStatusSchema = z.object({
+  student_id: z.coerce.number().int().positive('Valid student ID is required'),
+  login_type: z.enum(['login', 'logout']).optional(),
+  login_status: z.enum(['active', 'inactive']).optional(),
+});
+
+export type UpdateLoginStatusInput = z.infer<typeof UpdateLoginStatusSchema>;
+

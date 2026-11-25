@@ -15,10 +15,16 @@ export class PrismaProgramRepository implements IProgramRepository {
     if (typeof filter === 'string') {
       where.status = filter;
     } else if (filter) {
-      if (filter.status) where.status = filter.status;
+      if (filter.status) {
+        where.status = filter.status;
+      } else {
+        where.status = { not: 'Deleted' };
+      }
       if (filter.language) where.language = filter.language;
       if (filter.code) where.code = { contains: filter.code };
       if (filter.name) where.name = { contains: filter.name };
+    } else {
+      where.status = { not: 'Deleted' };
     }
 
     const records = await this.prisma.programs.findMany({
@@ -86,6 +92,166 @@ export class PrismaProgramRepository implements IProgramRepository {
       data: updateData,
     });
     return this.mapToDomain(record);
+  }
+
+  async delete(id: number, updaterId: number): Promise<boolean> {
+    const existing = await this.prisma.programs.findUnique({ where: { id: BigInt(id) } });
+    if (!existing) return false;
+
+    await this.prisma.programs.update({
+      where: { id: BigInt(id) },
+      data: {
+        status: 'Deleted',
+        updated_by: BigInt(updaterId),
+      },
+    });
+    return true;
+  }
+
+  async clone(sourceProgramId: number, creatorId: number): Promise<number> {
+    const source = await this.prisma.programs.findUnique({
+      where: { id: BigInt(sourceProgramId) },
+      include: {
+        sections: {
+          where: { status: { not: 'Deleted' } },
+          include: {
+            modules: {
+              where: { status: { not: 'Deleted' } },
+              include: {
+                topics: {
+                  where: { status: { not: 'Deleted' } },
+                  include: {
+                    topic_assessments: {
+                      where: { status: { not: 'Deleted' } },
+                      orderBy: [{ priority: 'asc' }, { id: 'asc' }],
+                    },
+                  },
+                  orderBy: [{ priority: 'asc' }, { id: 'asc' }],
+                },
+              },
+              orderBy: [{ order: 'asc' }, { id: 'asc' }],
+            },
+          },
+          orderBy: [{ priority: 'asc' }, { id: 'asc' }],
+        },
+      },
+    });
+
+    if (!source) {
+      throw new Error('Program not found');
+    }
+
+    let candidateProgramCode: string | null = null;
+    if (source.code) {
+      candidateProgramCode = `${source.code}_copy`;
+      let counter = 1;
+      while (await this.prisma.programs.findUnique({ where: { code: candidateProgramCode } })) {
+        candidateProgramCode = `${source.code}_${counter}`;
+        counter++;
+      }
+    }
+
+    const createdProgramId = await this.prisma.$transaction(async (tx) => {
+      const newProgram = await tx.programs.create({
+        data: {
+          code: candidateProgramCode,
+          name: `${source.name}_copy`,
+          description: source.description,
+          language: source.language,
+          icon: source.icon,
+          cover_image: source.cover_image,
+          status: source.status,
+          created_by: BigInt(creatorId),
+          updated_by: BigInt(creatorId),
+        },
+      });
+
+      for (const section of source.sections) {
+        let candidateSectionCode: string | null = null;
+        if (section.code) {
+          candidateSectionCode = `${section.code}_copy`;
+          let sectionCounter = 1;
+          while (await tx.sections.findUnique({ where: { code: candidateSectionCode } })) {
+            candidateSectionCode = `${section.code}_${sectionCounter}`;
+            sectionCounter++;
+          }
+        }
+
+        const newSection = await tx.sections.create({
+          data: {
+            program_id: newProgram.id,
+            code: candidateSectionCode,
+            name: section.name,
+            description: section.description,
+            icon: section.icon,
+            cover_image: section.cover_image,
+            duration: section.duration,
+            duration_in_months: section.duration_in_months,
+            amount: section.amount,
+            priority: section.priority,
+            status: section.status,
+            is_demo: section.is_demo,
+            created_by: BigInt(creatorId),
+            updated_by: BigInt(creatorId),
+          },
+        });
+
+        for (const module of section.modules) {
+          const newModule = await tx.modules.create({
+            data: {
+              section_id: newSection.id,
+              name: module.name,
+              description: module.description,
+              order: module.order,
+              status: module.status,
+              created_by: BigInt(creatorId),
+              updated_by: BigInt(creatorId),
+            },
+          });
+
+          for (const topic of module.topics) {
+            const newTopic = await tx.topics.create({
+              data: {
+                module_id: newModule.id,
+                name: topic.name,
+                description: topic.description,
+                type: topic.type,
+                cover_image: topic.cover_image,
+                file_url: topic.file_url,
+                content_url: topic.content_url,
+                day_count: topic.day_count,
+                priority: topic.priority,
+                order: topic.order,
+                status: topic.status,
+                created_by: BigInt(creatorId),
+                updated_by: BigInt(creatorId),
+              },
+            });
+
+            for (const assessment of topic.topic_assessments) {
+              await tx.topic_assessments.create({
+                data: {
+                  topic_id: newTopic.id,
+                  question: assessment.question,
+                  options: assessment.options as object,
+                  answer: assessment.answer as object,
+                  correct_answer: assessment.correct_answer,
+                  marks: assessment.marks,
+                  priority: assessment.priority,
+                  status: assessment.status,
+                  created_by: BigInt(creatorId),
+                  updated_by: BigInt(creatorId),
+                },
+              });
+            }
+          }
+        }
+      }
+
+      return Number(newProgram.id);
+    });
+
+    return createdProgramId;
   }
 
   private mapToDomain(raw: {

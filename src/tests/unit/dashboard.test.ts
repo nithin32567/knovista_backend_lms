@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { GetAdminDashboardStatsUseCase } from '../../modules/dashboard/application/use-cases/GetAdminDashboardStatsUseCase';
+import { GetLeaveReasonsUseCase } from '../../modules/welfare/application/use-cases/GetLeaveReasonsUseCase';
 import { IDashboardRepository } from '../../modules/dashboard/domain/repositories/IDashboardRepository';
+import { ILeaveReasonRepository } from '../../modules/welfare/domain/repositories/ILeaveReasonRepository';
 import { AdminDashboardStatsProps } from '../../modules/dashboard/domain/entities/AdminDashboardStats';
+import { LeaveReason } from '../../modules/welfare/domain/entities/LeaveReason';
 
 describe('GetAdminDashboardStatsUseCase', () => {
   const mockStats: AdminDashboardStatsProps = {
@@ -48,3 +51,30 @@ describe('GetAdminDashboardStatsUseCase', () => {
   });
 });
 
+describe('GetLeaveReasonsUseCase', () => {
+  const mockReasons = [
+    new LeaveReason({
+      id: 1,
+      name: 'Medical Leave',
+      status: 'active',
+      createdBy: 1,
+      updatedBy: 1,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    }),
+  ];
+
+  const mockLeaveReasonRepo: ILeaveReasonRepository = {
+    findActiveReasons: vi.fn().mockResolvedValue(mockReasons),
+  };
+
+  it('should return formatted leave reasons list', async () => {
+    const useCase = new GetLeaveReasonsUseCase(mockLeaveReasonRepo);
+    const result = await useCase.execute();
+
+    expect(mockLeaveReasonRepo.findActiveReasons).toHaveBeenCalledTimes(1);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.name).toBe('Medical Leave');
+    expect(result[0]?.status).toBe('active');
+  });
+});

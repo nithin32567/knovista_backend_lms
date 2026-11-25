@@ -32,6 +32,12 @@ export const UpdateProgramSchema = z.object({
 
 export type UpdateProgramInput = z.infer<typeof UpdateProgramSchema>;
 
+export const CloneProgramSchema = z.object({
+  program_id: z.coerce.number({ required_error: 'Program ID is required' }).int().positive(),
+});
+
+export type CloneProgramInput = z.infer<typeof CloneProgramSchema>;
+
 export const ProgramQuerySchema = z.object({
   status: z.string().optional(),
   language: z.string().optional(),

@@ -10,6 +10,8 @@ import { ListProgramsUseCase } from '../../application/use-cases/programs/ListPr
 import { CreateProgramUseCase } from '../../application/use-cases/programs/CreateProgramUseCase';
 import { GetProgramUseCase } from '../../application/use-cases/programs/GetProgramUseCase';
 import { UpdateProgramUseCase } from '../../application/use-cases/programs/UpdateProgramUseCase';
+import { DeleteProgramUseCase } from '../../application/use-cases/programs/DeleteProgramUseCase';
+import { CloneProgramUseCase } from '../../application/use-cases/programs/CloneProgramUseCase';
 import { ProgramController } from '../controllers/ProgramController';
 
 import { ListSectionsUseCase } from '../../application/use-cases/sections/ListSectionsUseCase';
@@ -39,7 +41,7 @@ import { SpecialCategoryController } from '../controllers/SpecialCategoryControl
 import { authenticate } from '../../../../shared/middleware/authenticate';
 import { validateRequest } from '../../../../shared/middleware/validateRequest';
 import { handleProgramUpload, handleSectionUpload, handleTopicUpload } from '../../../../shared/middleware/uploadMiddleware';
-import { CreateProgramSchema, UpdateProgramSchema } from '../../application/dto/ProgramDTO';
+import { CreateProgramSchema, UpdateProgramSchema, CloneProgramSchema } from '../../application/dto/ProgramDTO';
 import { CreateSectionSchema, UpdateSectionSchema } from '../../application/dto/SectionDTO';
 import { CreateModuleSchema, UpdateModuleSchema } from '../../application/dto/ModuleDTO';
 import { CreateTopicSchema, UpdateTopicSchema } from '../../application/dto/TopicDTO';
@@ -58,7 +60,9 @@ export function createCurriculumRouter(): Router {
     new ListProgramsUseCase(programRepo),
     new CreateProgramUseCase(programRepo),
     new GetProgramUseCase(programRepo),
-    new UpdateProgramUseCase(programRepo)
+    new UpdateProgramUseCase(programRepo),
+    new DeleteProgramUseCase(programRepo),
+    new CloneProgramUseCase(programRepo)
   );
 
   const sectionController = new SectionController(
@@ -96,6 +100,11 @@ export function createCurriculumRouter(): Router {
 
   router.get('/programs', programController.index);
   router.post(
+    '/programs/clone',
+    validateRequest(CloneProgramSchema),
+    programController.clone
+  );
+  router.post(
     '/programs',
     handleProgramUpload,
     validateRequest(CreateProgramSchema),
@@ -120,6 +129,7 @@ export function createCurriculumRouter(): Router {
     validateRequest(UpdateProgramSchema),
     programController.update
   );
+  router.delete('/programs/:id', programController.destroy);
 
   router.get('/sections', sectionController.index);
   router.post(

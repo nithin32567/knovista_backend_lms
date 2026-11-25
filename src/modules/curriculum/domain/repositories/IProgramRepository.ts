@@ -35,4 +35,6 @@ export interface IProgramRepository {
   findById(id: number): Promise<Program | null>;
   create(data: CreateProgramData): Promise<Program>;
   update(id: number, data: UpdateProgramData): Promise<Program | null>;
+  delete(id: number, updaterId: number): Promise<boolean>;
+  clone(sourceProgramId: number, creatorId: number): Promise<number>;
 }

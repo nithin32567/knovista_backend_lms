@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+import { env } from './env';
 import { logger } from './logger';
 
 declare global {
@@ -6,7 +8,10 @@ declare global {
 }
 
 function createPrismaClient(): PrismaClient {
+  const adapter = new PrismaMariaDb(env.DATABASE_URL);
+
   return new PrismaClient({
+    adapter,
     log:
       process.env['NODE_ENV'] === 'development'
         ? [

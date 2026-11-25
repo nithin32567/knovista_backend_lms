@@ -14,6 +14,8 @@ import { ListProgramsUseCase } from '../../modules/curriculum/application/use-ca
 import { CreateProgramUseCase } from '../../modules/curriculum/application/use-cases/programs/CreateProgramUseCase';
 import { GetProgramUseCase } from '../../modules/curriculum/application/use-cases/programs/GetProgramUseCase';
 import { UpdateProgramUseCase } from '../../modules/curriculum/application/use-cases/programs/UpdateProgramUseCase';
+import { DeleteProgramUseCase } from '../../modules/curriculum/application/use-cases/programs/DeleteProgramUseCase';
+import { CloneProgramUseCase } from '../../modules/curriculum/application/use-cases/programs/CloneProgramUseCase';
 
 import { ListSectionsUseCase } from '../../modules/curriculum/application/use-cases/sections/ListSectionsUseCase';
 import { CreateSectionUseCase } from '../../modules/curriculum/application/use-cases/sections/CreateSectionUseCase';
@@ -98,6 +100,8 @@ describe('Curriculum Module Unit Tests', () => {
       findById: vi.fn().mockResolvedValue(dummyProgram),
       create: vi.fn().mockResolvedValue(dummyProgram),
       update: vi.fn().mockResolvedValue(dummyProgram),
+      delete: vi.fn().mockResolvedValue(true),
+      clone: vi.fn().mockResolvedValue(2),
     };
 
     const listUseCase = new ListProgramsUseCase(mockRepo);
@@ -116,6 +120,13 @@ describe('Curriculum Module Unit Tests', () => {
     const updateUseCase = new UpdateProgramUseCase(mockRepo);
     const updated = await updateUseCase.execute(1, { name: 'Full Stack' }, 1);
     expect(updated.id).toBe(1);
+
+    const deleteUseCase = new DeleteProgramUseCase(mockRepo);
+    await expect(deleteUseCase.execute(1, 1)).resolves.not.toThrow();
+
+    const cloneUseCase = new CloneProgramUseCase(mockRepo);
+    const clonedId = await cloneUseCase.execute({ program_id: 1 }, 1);
+    expect(clonedId).toBe(2);
   });
 
   it('Section Use Cases: create and list', async () => {
@@ -131,6 +142,8 @@ describe('Curriculum Module Unit Tests', () => {
       findById: vi.fn().mockResolvedValue(dummyProgram),
       create: vi.fn().mockResolvedValue(dummyProgram),
       update: vi.fn().mockResolvedValue(dummyProgram),
+      delete: vi.fn().mockResolvedValue(true),
+      clone: vi.fn().mockResolvedValue(2),
     };
 
     const listUseCase = new ListSectionsUseCase(mockSectionRepo);

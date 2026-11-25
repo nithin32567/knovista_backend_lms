@@ -31,7 +31,18 @@ describe('Students Use Cases', () => {
     findByUsername: vi.fn().mockResolvedValue(null),
     findByMobile: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockResolvedValue(dummyStudent),
+    update: vi.fn().mockResolvedValue(dummyStudent),
     updatePassword: vi.fn().mockResolvedValue(undefined),
+    updateProfilePic: vi.fn().mockResolvedValue(undefined),
+    updateStatus: vi.fn().mockResolvedValue(undefined),
+    updateLoginStatus: vi.fn().mockResolvedValue(undefined),
+    blockStudent: vi.fn().mockResolvedValue(undefined),
+    unblockStudent: vi.fn().mockResolvedValue(undefined),
+    dropStudent: vi.fn().mockResolvedValue(undefined),
+    undropStudent: vi.fn().mockResolvedValue(undefined),
+    unblockModules: vi.fn().mockResolvedValue(undefined),
+    softDelete: vi.fn().mockResolvedValue(undefined),
+    findBlockReasons: vi.fn().mockResolvedValue([]),
   };
 
   it('ListStudentsUseCase should return formatted student records and pagination', async () => {
