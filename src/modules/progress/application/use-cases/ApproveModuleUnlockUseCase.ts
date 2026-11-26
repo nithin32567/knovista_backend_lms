@@ -5,12 +5,14 @@ import { ApproveModuleUnlockInput } from '../dto/ProgressDTO';
 export class ApproveModuleUnlockUseCase {
   constructor(private readonly progressRepository: IProgressRepository) {}
 
-  async execute(input: ApproveModuleUnlockInput, approverUserId: number) {
+  async execute(input: ApproveModuleUnlockInput, approverUserId: number, role?: string) {
     const success = await this.progressRepository.approveModuleUnlock(
       input.student_id,
       input.student_section_id,
       input.module_id,
-      approverUserId
+      approverUserId,
+      input.section_id,
+      role
     );
 
     if (!success) {

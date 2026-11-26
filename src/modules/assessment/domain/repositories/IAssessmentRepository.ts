@@ -15,7 +15,5 @@ export interface IAssessmentRepository {
   findAssessmentById(id: number): Promise<TopicAssessment | null>;
   saveAssessmentAnswers(answers: SaveAssessmentAnswerInput[]): Promise<StudentAssessmentAnswer[]>;
   getStudentAssessmentAnswers(studentId: number, topicId: number): Promise<StudentAssessmentAnswer[]>;
-  markStudentTopicsCompleted(studentTopicIds: number[]): Promise<void>;
-  recalculateSectionProgressByStudentTopicIds(studentTopicIds: number[]): Promise<void>;
 }
 

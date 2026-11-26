@@ -290,7 +290,7 @@ describe('Welfare Module Unit Tests', () => {
       };
 
       const useCase = new GetLeaveProofUseCase(leaveRepo);
-      await expect(useCase.execute(1)).rejects.toThrow(NotFoundError);
+      await expect(useCase.execute(1, { id: 1, type: 'institution_user', role: 'Admin', entity: null })).rejects.toThrow(NotFoundError);
     });
   });
 

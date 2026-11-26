@@ -47,15 +47,19 @@ export function createFinanceRouter(): Router {
     cancelFeeUseCase,
   );
 
+  const manageFees = requireRole(['Admin', 'Team Lead']);
+
   router.get(
     '/fee-collections',
     authenticate('institution_user'),
+    manageFees,
     controller.index,
   );
 
   router.post(
     '/fee-collections',
     authenticate('institution_user'),
+    manageFees,
     validateRequest(CreateFeeScheduleSchema),
     controller.store,
   );
@@ -63,12 +67,14 @@ export function createFinanceRouter(): Router {
   router.get(
     '/fee-collections/:id',
     authenticate('institution_user'),
+    manageFees,
     controller.show,
   );
 
   router.post(
     '/fee-collections/collect',
     authenticate('institution_user'),
+    manageFees,
     validateRequest(CollectFeeSchema),
     controller.collectFee,
   );
@@ -76,7 +82,7 @@ export function createFinanceRouter(): Router {
   router.post(
     '/fee-collections/approve',
     authenticate('institution_user'),
-    requireRole(['Admin', 'Team Lead']),
+    manageFees,
     validateRequest(ApproveFeeSchema),
     controller.approveFee,
   );
@@ -84,6 +90,7 @@ export function createFinanceRouter(): Router {
   router.post(
     '/fee-collections/update-installment',
     authenticate('institution_user'),
+    manageFees,
     validateRequest(UpdateInstallmentSchema),
     controller.updateInstallment,
   );
@@ -91,6 +98,7 @@ export function createFinanceRouter(): Router {
   router.post(
     '/fee-collections/delete-installment',
     authenticate('institution_user'),
+    manageFees,
     validateRequest(DeleteInstallmentSchema),
     controller.deleteInstallment,
   );
@@ -98,6 +106,7 @@ export function createFinanceRouter(): Router {
   router.post(
     '/fee-collections/cancel',
     authenticate('institution_user'),
+    manageFees,
     validateRequest(CancelFeeSchema),
     controller.cancelFee,
   );

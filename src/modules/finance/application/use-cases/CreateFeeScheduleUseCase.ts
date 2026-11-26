@@ -14,7 +14,7 @@ export class CreateFeeScheduleUseCase {
       throw new AppError('Duplicate installment numbers are not allowed', 422);
     }
 
-    const creatorId = input.created_by ?? createdById;
+    const creatorId = createdById;
 
     const installmentsData = input.installments.map((inst) => ({
       studentId: input.student_id,

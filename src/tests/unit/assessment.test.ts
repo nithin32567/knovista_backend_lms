@@ -78,8 +78,6 @@ describe('Assessment Module Unit Tests', () => {
         findAssessmentById: vi.fn(),
         saveAssessmentAnswers: vi.fn(),
         getStudentAssessmentAnswers: vi.fn(),
-        markStudentTopicsCompleted: vi.fn(),
-        recalculateSectionProgressByStudentTopicIds: vi.fn(),
       };
 
       const useCase = new GetTopicAssessmentsUseCase(mockRepo);
@@ -98,8 +96,6 @@ describe('Assessment Module Unit Tests', () => {
         findAssessmentById: vi.fn(),
         saveAssessmentAnswers: vi.fn(),
         getStudentAssessmentAnswers: vi.fn().mockResolvedValue([dummyStudentAnswer]),
-        markStudentTopicsCompleted: vi.fn(),
-        recalculateSectionProgressByStudentTopicIds: vi.fn(),
       };
 
       const useCase = new GetStudentAssessmentAnswersUseCase(mockRepo);
@@ -130,8 +126,6 @@ describe('Assessment Module Unit Tests', () => {
           }));
         }),
         getStudentAssessmentAnswers: vi.fn(),
-        markStudentTopicsCompleted: vi.fn().mockResolvedValue(undefined),
-        recalculateSectionProgressByStudentTopicIds: vi.fn().mockResolvedValue(undefined),
       };
 
       const useCase = new SaveAssessmentAnswersUseCase(mockRepo);
@@ -149,8 +143,6 @@ describe('Assessment Module Unit Tests', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0]?.marks).toBe(true);
-      expect(mockRepo.markStudentTopicsCompleted).toHaveBeenCalledWith([12]);
-      expect(mockRepo.recalculateSectionProgressByStudentTopicIds).toHaveBeenCalledWith([12]);
     });
 
     it('should reject forged marks when assessment does not exist', async () => {
@@ -171,8 +163,6 @@ describe('Assessment Module Unit Tests', () => {
           }));
         }),
         getStudentAssessmentAnswers: vi.fn(),
-        markStudentTopicsCompleted: vi.fn().mockResolvedValue(undefined),
-        recalculateSectionProgressByStudentTopicIds: vi.fn().mockResolvedValue(undefined),
       };
 
       const useCase = new SaveAssessmentAnswersUseCase(mockRepo);
@@ -189,7 +179,6 @@ describe('Assessment Module Unit Tests', () => {
         ],
       })).rejects.toThrow('Assessment does not belong to the active topic');
       expect(mockRepo.saveAssessmentAnswers).not.toHaveBeenCalled();
-      expect(mockRepo.markStudentTopicsCompleted).not.toHaveBeenCalled();
     });
   });
 });

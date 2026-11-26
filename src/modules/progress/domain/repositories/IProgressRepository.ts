@@ -7,6 +7,7 @@ export interface ListUnlockRequestsFilter {
   sectionId?: number | undefined;
   loginStatus?: boolean | undefined;
   keyword?: string | undefined;
+  actor?: { id: number; role?: string | undefined } | undefined;
   page: number;
   perPage: number;
 }
@@ -27,7 +28,9 @@ export interface IProgressRepository {
     studentId: number,
     studentSectionId: number,
     moduleId: number,
-    approverUserId: number
+    approverUserId: number,
+    sectionId: number,
+    role?: string | undefined
   ): Promise<boolean>;
   completeCourse(studentSectionId: number): Promise<boolean>;
 }

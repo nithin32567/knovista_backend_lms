@@ -1,3 +1,4 @@
+import { getAssignedStudentIdsForStaff } from '../../../welfare/application/services/WelfareAccessService';
 import { requireRole } from '../../../../shared/middleware/requireRole';
 import { Router } from 'express';
 import { prisma } from '../../../../config/database';
@@ -67,25 +68,29 @@ export function createStudentRouter(): Router {
     getBlockReasonsUseCase,
     unblockModulesUseCase,
     updateLoginStatusUseCase,
+    (id, role) => getAssignedStudentIdsForStaff(prisma, id, role),
   );
+
+  const manageStudents = requireRole(['Admin', 'Team Lead']);
+  const onboardStudents = requireRole(['Admin', 'Team Lead', 'Sales Analyst']);
 
   router.get('/', authenticate('institution_user'), studentController.list);
   router.get('/block-reasons', authenticate('institution_user'), studentController.getBlockReasons);
 
-  router.post('/register', validateRequest(CreateStudentSchema), studentController.create);
+  router.post('/register', authenticate('institution_user'), onboardStudents, validateRequest(CreateStudentSchema), studentController.create);
   router.post('/reset-password', authenticate('institution_user'), requireRole(['Admin', 'Team Lead']), validateRequest(AdminResetStudentPasswordSchema), studentController.resetPassword);
-  router.post('/block', authenticate('institution_user'), validateRequest(BlockStudentSchema), studentController.blockStudent);
-  router.post('/unblock', authenticate('institution_user'), validateRequest(UnblockStudentSchema), studentController.unblockStudent);
-  router.post('/drop', authenticate('institution_user'), validateRequest(DropStudentSchema), studentController.dropStudent);
-  router.post('/undrop', authenticate('institution_user'), validateRequest(UndropStudentSchema), studentController.undropStudent);
-  router.post('/unblock-modules', authenticate('institution_user'), validateRequest(UnblockStudentModulesSchema), studentController.unblockModules);
+  router.post('/block', authenticate('institution_user'), manageStudents, validateRequest(BlockStudentSchema), studentController.blockStudent);
+  router.post('/unblock', authenticate('institution_user'), manageStudents, validateRequest(UnblockStudentSchema), studentController.unblockStudent);
+  router.post('/drop', authenticate('institution_user'), manageStudents, validateRequest(DropStudentSchema), studentController.dropStudent);
+  router.post('/undrop', authenticate('institution_user'), manageStudents, validateRequest(UndropStudentSchema), studentController.undropStudent);
+  router.post('/unblock-modules', authenticate('institution_user'), manageStudents, validateRequest(UnblockStudentModulesSchema), studentController.unblockModules);
   router.post('/login-status', authenticate('any'), validateRequest(UpdateLoginStatusSchema), studentController.updateLoginStatus);
   router.post('/update-profile', authenticate('student'), validateRequest(UpdateStudentProfileSchema), studentController.updateProfile);
   router.post('/update-profile-image', authenticate('student'), handleProfilePicUpload, studentController.updateProfileImage);
-  router.post('/', validateRequest(CreateStudentSchema), studentController.create);
+  router.post('/', authenticate('institution_user'), onboardStudents, validateRequest(CreateStudentSchema), studentController.create);
 
-  router.put('/:id', authenticate('institution_user'), validateRequest(UpdateStudentSchema), studentController.update);
-  router.delete('/:id', authenticate('institution_user'), studentController.deleteStudent);
+  router.put('/:id', authenticate('institution_user'), manageStudents, validateRequest(UpdateStudentSchema), studentController.update);
+  router.delete('/:id', authenticate('institution_user'), manageStudents, studentController.deleteStudent);
 
   return router;
 }

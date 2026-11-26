@@ -1,3 +1,4 @@
+import { requireRole } from '../../../../shared/middleware/requireRole';
 import { Router } from 'express';
 import { prisma } from '../../../../config/database';
 import { PrismaBatchRepository } from '../../infrastructure/persistence/PrismaBatchRepository';
@@ -32,6 +33,7 @@ import { CreateExtensionSchema, UpdateExtensionSchema } from '../../application/
 
 export function createBatchRouter(): Router {
   const router = Router();
+  const manageEnrollment = requireRole(['Admin', 'Team Lead']);
 
   const batchRepo = new PrismaBatchRepository(prisma);
   const studentSectionRepo = new PrismaStudentSectionRepository(prisma);
@@ -64,19 +66,19 @@ export function createBatchRouter(): Router {
   router.get('/student/my-batch/:batchId/modules', authenticate('student'), studentSectionController.batchModules);
 
   router.get('/program-section-batches', authenticate('institution_user'), batchController.index);
-  router.post('/program-section-batches', authenticate('institution_user'), validateRequest(CreateBatchSchema), batchController.store);
+  router.post('/program-section-batches', authenticate('institution_user'), manageEnrollment, validateRequest(CreateBatchSchema), batchController.store);
   router.get('/program-section-batches/:id', authenticate('institution_user'), batchController.show);
 
   router.get('/student-sections', authenticate('institution_user'), studentSectionController.index);
-  router.post('/student-sections', authenticate('institution_user'), validateRequest(CreateStudentSectionSchema), studentSectionController.store);
+  router.post('/student-sections', authenticate('institution_user'), manageEnrollment, validateRequest(CreateStudentSectionSchema), studentSectionController.store);
   router.get('/student-sections/:id', authenticate('institution_user'), studentSectionController.show);
-  router.put('/student-sections/:id', authenticate('institution_user'), validateRequest(UpdateStudentSectionSchema), studentSectionController.update);
-  router.delete('/student-sections/:id', authenticate('institution_user'), studentSectionController.destroy);
+  router.put('/student-sections/:id', authenticate('institution_user'), manageEnrollment, validateRequest(UpdateStudentSectionSchema), studentSectionController.update);
+  router.delete('/student-sections/:id', authenticate('institution_user'), manageEnrollment, studentSectionController.destroy);
 
   router.get('/program-extensions', authenticate('institution_user'), extensionController.index);
-  router.post('/program-extensions', authenticate('institution_user'), validateRequest(CreateExtensionSchema), extensionController.store);
+  router.post('/program-extensions', authenticate('institution_user'), manageEnrollment, validateRequest(CreateExtensionSchema), extensionController.store);
   router.get('/program-extensions/:id', authenticate('institution_user'), extensionController.show);
-  router.put('/program-extensions/:id', authenticate('institution_user'), validateRequest(UpdateExtensionSchema), extensionController.update);
+  router.put('/program-extensions/:id', authenticate('institution_user'), manageEnrollment, validateRequest(UpdateExtensionSchema), extensionController.update);
 
   return router;
 }

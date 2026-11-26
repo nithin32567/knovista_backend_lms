@@ -30,22 +30,22 @@ export class PrismaProgressRepository implements IProgressRepository {
     return this.mapToTopicProgress(record);
   }
 
-  async completeTopic(topicProgressId: number, _studentId: number): Promise<StudentTopicProgress | null> {
-    const existing = await this.prisma.student_section_module_topics.findUnique({
-      where: { id: BigInt(topicProgressId) },
-    });
-    if (!existing) return null;
-
-    const updated = await this.prisma.student_section_module_topics.update({
-      where: { id: BigInt(topicProgressId) },
-      data: {
-        status: 'completed',
-        topic_completed_at: new Date(),
+  async completeTopic(topicProgressId: number, studentId: number): Promise<StudentTopicProgress | null> {
+    const owner = BigInt(studentId);
+    const where = {
+      id: BigInt(topicProgressId),
+      student_id: owner,
+      topic: { type: { not: 'mcq' }, topic_assessments: { none: { status: 'Active' } } },
+      student_section_module: {
+        status: { in: ['Unlocked', 'active', 'completed'] },
+        student_section: { student_id: owner, status: { notIn: ['Deleted', 'deleted'] } },
       },
-      include: { topic: true },
+    } satisfies Prisma.student_section_module_topicsWhereInput;
+    const updated = await this.prisma.student_section_module_topics.updateMany({
+      where,
+      data: { status: 'completed', topic_completed_at: new Date() },
     });
-
-    return this.mapToTopicProgress(updated);
+    return updated.count ? this.findTopicProgressById(topicProgressId) : null;
   }
 
   async getStudentSectionIdByTopicProgress(topicProgressId: number): Promise<number | null> {
@@ -95,52 +95,62 @@ export class PrismaProgressRepository implements IProgressRepository {
     sectionId: number,
     nextModuleId: number
   ): Promise<{ success: boolean; tutorId: number | null; studentName: string | null; moduleName: string | null }> {
-    const studentSection = await this.prisma.student_sections.findFirst({
-      where: {
-        student_id: BigInt(studentId),
-        batch: {
-          section_id: BigInt(sectionId),
+    const denied = { success: false, tutorId: null, studentName: null, moduleName: null };
+    const owner = BigInt(studentId);
+    const studentSection = await this.prisma.$transaction(async (tx) => {
+      const enrollment = await tx.student_sections.findFirst({
+        where: {
+          student_id: owner,
+          batch: { section_id: BigInt(sectionId) },
+          status: { notIn: ['Deleted', 'deleted'] },
+          student_section_modules: { some: { module_id: BigInt(nextModuleId) } },
         },
-        status: { not: 'deleted' },
-      },
-      include: {
-        batch: true,
-      },
+        include: {
+          batch: true,
+          student_section_modules: {
+            include: {
+              module: { include: { topics: { where: { status: 'Active' }, select: { id: true } } } },
+              student_section_module_topics: {
+                where: { student_id: owner, status: 'completed' },
+                select: { topic_id: true },
+              },
+            },
+            orderBy: [{ module: { order: 'asc' } }, { module_id: 'asc' }],
+          },
+        },
+        orderBy: { id: 'desc' },
+      });
+      if (!enrollment) return null;
+      const modules = enrollment.student_section_modules;
+      const index = modules.findIndex((entry) => entry.module_id === BigInt(nextModuleId));
+      const target = modules[index];
+      const previous = modules[index - 1];
+      if (!target || target.module.section_id !== BigInt(sectionId) || !previous ||
+          !['Unlocked', 'active', 'completed'].includes(previous.status)  || target.module.status !== 'Active') return null;
+      const completedTopics = new Set(previous.student_section_module_topics.map((topic) => topic.topic_id));
+      if (previous.module.topics.some((topic) => !completedTopics.has(topic.id))) return null;
+
+      const requested = await tx.student_section_modules.updateMany({
+        where: { id: target.id, status: 'Locked', unlock_requested: false },
+        data: {
+          status: 'pending',
+          unlock_requested: true,
+          unlock_requested_by: owner,
+          unlock_requested_at: new Date(),
+        },
+      });
+      if (!requested.count) return null;
+      await tx.student_section_modules.update({
+        where: { id: previous.id },
+        data: { status: 'completed' },
+      });
+      await tx.student_section_module_topics.updateMany({
+        where: { student_section_module_id: target.id, student_id: owner, status: { not: 'completed' } },
+        data: { status: 'pending' },
+      });
+      return enrollment;
     });
-
-    if (!studentSection) {
-      return { success: false, tutorId: null, studentName: null, moduleName: null };
-    }
-
-    const ssm = await this.prisma.student_section_modules.findFirst({
-      where: {
-        student_section_id: studentSection.id,
-        module_id: BigInt(nextModuleId),
-      },
-    });
-
-    if (!ssm) {
-      return { success: false, tutorId: null, studentName: null, moduleName: null };
-    }
-
-    await this.prisma.student_section_modules.update({
-      where: { id: ssm.id },
-      data: {
-        status: 'pending',
-        unlock_requested: true,
-        unlock_requested_by: BigInt(studentId),
-        unlock_requested_at: new Date(),
-      },
-    });
-
-    await this.prisma.student_section_module_topics.updateMany({
-      where: {
-        student_section_module_id: ssm.id,
-      },
-      data: {
-        status: 'pending',
-      },
-    });
+    if (!studentSection) return denied;
 
     let tutorId: number | null = null;
     if (studentSection.batch.tutor_id) {
@@ -171,28 +181,17 @@ export class PrismaProgressRepository implements IProgressRepository {
   async listUnlockRequests(filters: ListUnlockRequestsFilter): Promise<{ items: ModuleUnlockRequest[]; total: number }> {
     const where: Prisma.student_section_modulesWhereInput = {
       status: 'pending',
+      unlock_requested: true,
       student_section: {
-        status: { not: 'deleted' },
+        status: { notIn: ['Deleted', 'deleted'] },
+        ...(filters.studentId !== undefined ? { student_id: BigInt(filters.studentId) } : {}),
+        ...(filters.batchId !== undefined ? { batch_id: BigInt(filters.batchId) } : {}),
+        batch: {
+          ...this.batchAccess(filters.actor?.id, filters.actor?.role),
+          ...(filters.sectionId !== undefined ? { section_id: BigInt(filters.sectionId) } : {}),
+        },
       },
     };
-
-    if (filters.studentId !== undefined) {
-      where.student_id = BigInt(filters.studentId);
-    }
-
-    if (filters.batchId !== undefined) {
-      where.student_section = {
-        batch_id: BigInt(filters.batchId),
-      };
-    }
-
-    if (filters.sectionId !== undefined) {
-      where.student_section = {
-        batch: {
-          section_id: BigInt(filters.sectionId),
-        },
-      };
-    }
 
     const total = await this.prisma.student_section_modules.count({ where });
 
@@ -256,76 +255,57 @@ export class PrismaProgressRepository implements IProgressRepository {
     return { items, total };
   }
 
+  private batchAccess(id: number | undefined, role: string | undefined): Prisma.program_section_batchesWhereInput {
+    if (id && (role === 'Admin' || role === 'Team Lead')) return {};
+    if (id && role === 'Tutor') return { tutor_id: BigInt(id) };
+    if (id && role === 'Quality Analyst') return { qa_id: BigInt(id) };
+    return { id: { in: [] } };
+  }
+
   async approveModuleUnlock(
     studentId: number,
     studentSectionId: number,
     moduleId: number,
-    approverUserId: number
+    approverUserId: number,
+    sectionId: number,
+    role?: string
   ): Promise<boolean> {
-    const ssm = await this.prisma.student_section_modules.findFirst({
-      where: {
-        student_section_id: BigInt(studentSectionId),
-        module_id: BigInt(moduleId),
-      },
-      include: {
-        module: true,
-      },
-    });
-
-    if (!ssm) return false;
-
-    await this.prisma.student_section_modules.update({
-      where: { id: ssm.id },
-      data: {
-        status: 'active',
-        unlocked_by: BigInt(approverUserId),
-        unlocked_at: new Date(),
-      },
-    });
-
-    await this.prisma.student_section_module_topics.updateMany({
-      where: {
-        student_section_module_id: ssm.id,
-      },
-      data: {
-        status: 'active',
-      },
-    });
-
-    const currentOrder = ssm.module.order;
-    const previousSsm = await this.prisma.student_section_modules.findFirst({
-      where: {
-        student_section_id: BigInt(studentSectionId),
-        module: {
-          order: { lt: currentOrder },
-        },
-      },
-      orderBy: {
-        module: {
-          order: 'desc',
-        },
-      },
-    });
-
-    if (previousSsm) {
-      await this.prisma.student_section_modules.update({
-        where: { id: previousSsm.id },
-        data: {
-          status: 'completed',
-        },
-      });
-
-      await this.prisma.student_section_module_topics.updateMany({
+    const student = BigInt(studentId);
+    const section = BigInt(sectionId);
+    return this.prisma.$transaction(async (tx) => {
+      const target = await tx.student_section_modules.findFirst({
         where: {
-          student_section_module_id: previousSsm.id,
+          student_section_id: BigInt(studentSectionId),
+          module_id: BigInt(moduleId),
+          module: { section_id: section },
+          status: 'pending',
+          unlock_requested: true,
+          unlock_requested_by: student,
+          student_section: {
+            student_id: student,
+            status: { notIn: ['Deleted', 'deleted'] },
+            batch: { ...this.batchAccess(approverUserId, role), section_id: section },
+          },
         },
+        select: { id: true },
+      });
+      if (!target) return false;
+      const updated = await tx.student_section_modules.updateMany({
+        where: { id: target.id, status: 'pending', unlock_requested: true },
         data: {
-          status: 'completed',
+          status: 'active',
+          unlock_requested: false,
+          unlocked_by: BigInt(approverUserId),
+          unlocked_at: new Date(),
         },
       });
-    }
-
-    return true;
+      if (!updated.count) return false;
+      await tx.student_section_module_topics.updateMany({
+        where: { student_section_module_id: target.id, student_id: student, status: 'pending' },
+        data: { status: 'active' },
+      });
+      return true;
+    });
   }
 
   async completeCourse(studentSectionId: number): Promise<boolean> {

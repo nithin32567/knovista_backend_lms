@@ -1,3 +1,4 @@
+import { UnauthorizedError } from '../../../../shared/errors/UnauthorizedError';
 import { Router } from 'express';
 import { prisma } from '../../../../config/database';
 import { PrismaStudentRepository } from '../../infrastructure/persistence/PrismaStudentRepository';
@@ -36,7 +37,7 @@ export function createAuthRouter(): Router {
   const studentRegisterUseCase = new StudentRegisterUseCase(studentRepo);
   const getStudentProfileUseCase = new GetStudentProfileUseCase(studentRepo);
   const forgotPasswordUseCase = new ForgotPasswordUseCase(studentRepo, passwordResetRepo);
-  const resetPasswordUseCase = new ResetPasswordUseCase(studentRepo, passwordResetRepo);
+  const resetPasswordUseCase = new ResetPasswordUseCase(passwordResetRepo);
   const changePasswordUseCase = new ChangePasswordUseCase(studentRepo);
 
   const staffLoginUseCase = new StaffLoginUseCase(staffRepo);
@@ -85,6 +86,7 @@ export function createAuthRouter(): Router {
 
   router.post(
     '/student/reset-password',
+    authRateLimiter,
     validateRequest(ResetPasswordSchema),
     studentController.resetPassword
   );
@@ -121,6 +123,24 @@ export function createAuthRouter(): Router {
     authenticate('institution_user'),
     staffController.getProfile
   );
+
+  router.post(['/student/logout', '/staff/logout', '/institution-user/logout'], authenticate('any'), async (req, res, next) => {
+    try {
+      const session = req.user?.session;
+      if (!session) throw new UnauthorizedError('Authentication required');
+      await prisma.$transaction([
+        prisma.revoked_sessions.deleteMany({ where: { expires_at: { lte: new Date() } } }),
+        prisma.revoked_sessions.upsert({
+          where: { token_digest: session.digest },
+          create: { token_digest: session.digest, expires_at: session.expiresAt },
+          update: {},
+        }),
+      ]);
+      res.status(204).end();
+    } catch (error) {
+      next(error);
+    }
+  });
 
   return router;
 }

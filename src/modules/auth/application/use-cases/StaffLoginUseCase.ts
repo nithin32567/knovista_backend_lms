@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { passwordSessionProof } from '../../../../shared/utils/sessionTokens';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { IInstitutionUserRepository } from '../../domain/repositories/IInstitutionUserRepository';
@@ -32,6 +34,8 @@ export class StaffLoginUseCase {
 
     const tokenPayload = {
       sub: staff.id,
+      pwd: passwordSessionProof(staff.passwordHash, env.JWT_SECRET),
+      jti: randomUUID(),
       prv: 'App\\Models\\InstitutionUser',
       role: staff.roleName,
     };

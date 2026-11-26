@@ -13,6 +13,10 @@ export class PrismaStudentRepository implements IStudentRepository {
       status: { not: 'Deleted' },
     };
 
+    if (filters.allowedStudentIds) {
+      where.id = { in: filters.allowedStudentIds.map((id) => BigInt(id)) };
+    }
+
     if (creatorId !== undefined) {
       where.created_by = BigInt(creatorId);
     }

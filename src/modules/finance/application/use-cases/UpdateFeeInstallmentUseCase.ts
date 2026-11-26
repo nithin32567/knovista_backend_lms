@@ -19,7 +19,7 @@ export class UpdateFeeInstallmentUseCase {
       throw new AppError('Only pending installments can be modified', 422);
     }
 
-    const updatedBy = input.updated_by ?? authUserId;
+    const updatedBy = authUserId;
 
     const updateData: Parameters<IFeeCollectionRepository['updateInstallment']>[1] = {
       updatedBy,

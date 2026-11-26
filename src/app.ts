@@ -34,7 +34,9 @@ export function createApp(): Express {
 
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-  app.use('/storage', express.static(path.join(process.cwd(), 'uploads')));
+  for (const directory of ['programs', 'sections', 'topics', 'profile-pics']) {
+    app.use(`/storage/${directory}`, express.static(path.join(process.cwd(), 'uploads', directory)));
+  }
 
   app.get('/health', (_req: Request, res: Response) => {
     sendSuccess(
@@ -76,6 +78,11 @@ export function createApp(): Express {
   app.use('/api', institutionUserRouter);
   app.use('/', institutionUserRouter);
 
+  const assessmentRouter = createAssessmentRouter();
+  app.use(env.API_PREFIX, assessmentRouter);
+  app.use('/api', assessmentRouter);
+  app.use('/', assessmentRouter);
+
   const curriculumRouter = createCurriculumRouter();
   app.use(env.API_PREFIX, curriculumRouter);
   app.use('/api', curriculumRouter);
@@ -95,11 +102,6 @@ export function createApp(): Express {
   app.use(env.API_PREFIX, progressRouter);
   app.use('/api', progressRouter);
   app.use('/', progressRouter);
-
-  const assessmentRouter = createAssessmentRouter();
-  app.use(env.API_PREFIX, assessmentRouter);
-  app.use('/api', assessmentRouter);
-  app.use('/', assessmentRouter);
 
   const financeRouter = createFinanceRouter();
   app.use(env.API_PREFIX, financeRouter);

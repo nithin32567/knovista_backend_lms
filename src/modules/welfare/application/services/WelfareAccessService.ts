@@ -31,7 +31,7 @@ export async function getAssignedStudentIdsForStaff(
   }
 
   const sections = await prisma.student_sections.findMany({
-    where: { batch_id: { in: batches.map((b) => b.id) } },
+    where: { batch_id: { in: batches.map((b) => b.id) }, status: { notIn: ['Deleted', 'deleted'] } },
     select: { student_id: true },
   });
 

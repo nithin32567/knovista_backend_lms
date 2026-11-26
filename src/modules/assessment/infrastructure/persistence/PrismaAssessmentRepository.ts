@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { ForbiddenError } from '../../../../shared/errors/ForbiddenError';
 import { prisma } from '../../../../config/database';
 import { IAssessmentRepository, SaveAssessmentAnswerInput } from '../../domain/repositories/IAssessmentRepository';
@@ -32,24 +33,58 @@ export class PrismaAssessmentRepository implements IAssessmentRepository {
   }
 
   async saveAssessmentAnswers(answers: SaveAssessmentAnswerInput[]): Promise<StudentAssessmentAnswer[]> {
-    for (const answer of answers) {
-      const topic = await prisma.student_section_module_topics.findFirst({
-        where: {
-          id: BigInt(answer.studentTopicId),
-          student_id: BigInt(answer.studentId),
-          topic_id: BigInt(answer.topicId),
-          student_section_module: {
-            status: { in: ['Unlocked', 'active', 'completed'] },
-            student_section: { student_id: BigInt(answer.studentId) },
-          },
-        },
-      });
-      if (!topic) throw new ForbiddenError('Student topic is not available for assessment');
+    return prisma.$transaction(async (tx) => {
+      const groups = new Map<number, SaveAssessmentAnswerInput[]>();
+      for (const answer of answers) {
+        const group = groups.get(answer.studentTopicId) ?? [];
+        group.push(answer);
+        groups.set(answer.studentTopicId, group);
+      }
+      for (const group of groups.values()) await this.completeAssessmentTopic(tx, group);
+      const saved = await this.persistAnswers(tx, answers);
+      await this.recalculateSectionProgressByStudentTopicIds(tx, [...groups.keys()]);
+      return saved;
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
+
+  private async completeAssessmentTopic(tx: Prisma.TransactionClient, answers: SaveAssessmentAnswerInput[]): Promise<void> {
+    const first = answers[0];
+    if (!first) return;
+    const student = BigInt(first.studentId);
+    const topicId = BigInt(first.topicId);
+    const questions = await tx.topic_assessments.findMany({
+      where: { topic_id: topicId, status: 'Active' },
+      select: { id: true },
+    });
+    const submitted = new Set(answers.map((answer) => BigInt(answer.assessmentId)));
+    if (answers.some((answer) => answer.studentId !== first.studentId || answer.topicId !== first.topicId) ||
+        answers.length !== submitted.size || submitted.size !== questions.length ||
+        questions.some((question) => !submitted.has(question.id))) {
+      throw new ForbiddenError('Submit each active assessment question exactly once');
     }
+
+    const completed = await tx.student_section_module_topics.updateMany({
+      where: {
+        id: BigInt(first.studentTopicId),
+        student_id: student,
+        topic_id: topicId,
+        status: { not: 'completed' },
+        topic: { status: 'Active' },
+        student_section_module: {
+          status: { in: ['Unlocked', 'active'] },
+          student_section: { student_id: student, status: { notIn: ['Deleted', 'deleted'] } },
+        },
+      },
+      data: { status: 'completed', topic_completed_at: new Date() },
+    });
+    if (completed.count !== 1) throw new ForbiddenError('Student topic is not available for assessment');
+  }
+
+  private async persistAnswers(tx: Prisma.TransactionClient, answers: SaveAssessmentAnswerInput[]): Promise<StudentAssessmentAnswer[]> {
     const results: StudentAssessmentAnswer[] = [];
 
     for (const ans of answers) {
-      const created = await prisma.student_topic_assessment_answers.create({
+      const created = await tx.student_topic_assessment_answers.create({
         data: {
           student_id: BigInt(ans.studentId),
           student_topic_id: BigInt(ans.studentTopicId),
@@ -119,26 +154,11 @@ export class PrismaAssessmentRepository implements IAssessmentRepository {
     });
   }
 
-  async markStudentTopicsCompleted(studentTopicIds: number[]): Promise<void> {
+  private async recalculateSectionProgressByStudentTopicIds(tx: Prisma.TransactionClient, studentTopicIds: number[]): Promise<void> {
     if (studentTopicIds.length === 0) return;
 
     const ids = studentTopicIds.map((id) => BigInt(id));
-    await prisma.student_section_module_topics.updateMany({
-      where: {
-        id: { in: ids },
-      },
-      data: {
-        status: 'completed',
-        topic_completed_at: new Date(),
-      },
-    });
-  }
-
-  async recalculateSectionProgressByStudentTopicIds(studentTopicIds: number[]): Promise<void> {
-    if (studentTopicIds.length === 0) return;
-
-    const ids = studentTopicIds.map((id) => BigInt(id));
-    const topics = await prisma.student_section_module_topics.findMany({
+    const topics = await tx.student_section_module_topics.findMany({
       where: { id: { in: ids } },
       select: {
         student_section_module: {
@@ -158,7 +178,7 @@ export class PrismaAssessmentRepository implements IAssessmentRepository {
     );
 
     for (const sectionId of studentSectionIds) {
-      const allTopics = await prisma.student_section_module_topics.findMany({
+      const allTopics = await tx.student_section_module_topics.findMany({
         where: {
           student_section_module: {
             student_section_id: sectionId,
@@ -173,16 +193,16 @@ export class PrismaAssessmentRepository implements IAssessmentRepository {
       if (total === 0) continue;
 
       const completed = allTopics.filter((t) => t.status === 'completed').length;
-      const progressPercentage = Math.round((completed / total) * 100);
+      const progressPercentage = Math.floor((completed / total) * 100);
 
       const updateData: { progress_percent: number; status?: string } = {
         progress_percent: progressPercentage,
       };
-      if (progressPercentage === 100) {
+      if (completed === total) {
         updateData.status = 'Completed';
       }
 
-      await prisma.student_sections.update({
+      await tx.student_sections.update({
         where: { id: sectionId },
         data: updateData,
       });

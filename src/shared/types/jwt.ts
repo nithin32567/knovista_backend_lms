@@ -3,6 +3,7 @@ export interface JwtPayloadClaims {
   prv?: string;
   iat?: number;
   exp?: number;
+  pwd?: string;
 }
 
 export type AuthUserType = 'student' | 'institution_user';
@@ -12,5 +13,6 @@ export interface AuthenticatedUser {
   type: AuthUserType;
   role?: string;
   entity: unknown;
+  session?: { digest: string; expiresAt: Date };
 }
 

@@ -1,3 +1,4 @@
+import { ForbiddenError } from '../../../../shared/errors/ForbiddenError';
 import { Request, Response, NextFunction } from 'express';
 import { CompleteStudentTopicUseCase } from '../../application/use-cases/CompleteStudentTopicUseCase';
 import { RequestModuleUnlockUseCase } from '../../application/use-cases/RequestModuleUnlockUseCase';
@@ -36,6 +37,9 @@ export class ProgressController {
   requestUnlock = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const input = req.body as RequestUnlockNextModuleInput;
+      if (req.user?.type !== 'student' || req.user.id !== input.student_id) {
+        throw new ForbiddenError('Student identity does not match');
+      }
       const result = await this.requestModuleUnlockUseCase.execute(input);
       sendSuccess(res, null, result.message);
     } catch (error) {
@@ -46,7 +50,7 @@ export class ProgressController {
   listUnlockRequests = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const query = req.query as unknown as ListUnlockRequestsQueryInput;
-      const result = await this.listModuleUnlockRequestsUseCase.execute(query);
+      const result = await this.listModuleUnlockRequestsUseCase.execute(query, req.user);
       res.status(200).json({
         success: true,
         message: 'Module unlock requests retrieved successfully',
@@ -65,7 +69,7 @@ export class ProgressController {
     try {
       const input = req.body as ApproveModuleUnlockInput;
       const approverId = req.user?.id ? Number(req.user.id) : 0;
-      const result = await this.approveModuleUnlockUseCase.execute(input, approverId);
+      const result = await this.approveModuleUnlockUseCase.execute(input, approverId, req.user?.role);
       sendSuccess(res, null, result.message);
     } catch (error) {
       next(error);

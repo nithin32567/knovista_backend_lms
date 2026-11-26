@@ -1,27 +1,38 @@
-import { describe, it, expect } from 'vitest';
+import { prisma } from '../../config/database';
+import { passwordSessionProof } from '../../shared/utils/sessionTokens';
+import { beforeAll, describe, it, expect } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { app } from '../../app';
 import { env } from '../../config/env';
 
 describe('Student Dashboard, Notifications, Quotes, Leave Reasons & Performance Integration Tests', () => {
-  const studentToken = jwt.sign(
-    { sub: 4, prv: 'App\\Models\\Student' },
-    env.JWT_SECRET,
-    { expiresIn: '1h' }
-  );
+  let studentToken: string;
+  let otherStudentToken: string;
+  let adminToken: string;
 
-  const otherStudentToken = jwt.sign(
-    { sub: 1, prv: 'App\\Models\\Student' },
-    env.JWT_SECRET,
-    { expiresIn: '1h' }
-  );
+  beforeAll(async () => {
+    const student = await prisma.students.findUniqueOrThrow({ where: { id: 4n }, select: { password: true } });
+    const otherStudent = await prisma.students.findUniqueOrThrow({ where: { id: 1n }, select: { password: true } });
+    const admin = await prisma.institution_users.findUniqueOrThrow({ where: { id: 1n }, select: { password: true } });
+    studentToken = jwt.sign(
+      { pwd: passwordSessionProof(student.password, env.JWT_SECRET), sub: 4, prv: 'App\\Models\\Student' },
+      env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
 
-  const adminToken = jwt.sign(
-    { sub: 1, prv: 'App\\Models\\InstitutionUser', role: 'Admin' },
-    env.JWT_SECRET,
-    { expiresIn: '1h' }
-  );
+    otherStudentToken = jwt.sign(
+      { pwd: passwordSessionProof(otherStudent.password, env.JWT_SECRET), sub: 1, prv: 'App\\Models\\Student' },
+      env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    adminToken = jwt.sign(
+      { pwd: passwordSessionProof(admin.password, env.JWT_SECRET), sub: 1, prv: 'App\\Models\\InstitutionUser', role: 'Admin' },
+      env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+  });
 
   it('GET /api/student/notifications?student_id=4 with student token returns 200 and expected shape', async () => {
     const res = await request(app)

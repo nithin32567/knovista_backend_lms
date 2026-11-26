@@ -500,3 +500,10 @@ model student_reports {
   @@index([student_id])
   @@index([report_head_id])
 }
+
+model revoked_sessions {
+  token_digest String   @id @db.Char(64)
+  expires_at   DateTime
+
+  @@index([expires_at])
+}

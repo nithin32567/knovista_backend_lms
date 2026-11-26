@@ -25,7 +25,7 @@ export class ApproveFeeCollectionUseCase {
       );
     }
 
-    const authById = input.auth_by ?? authUserId;
+    const authById = authUserId;
 
     return this.feeCollectionRepository.approveFee(feeId, {
       approvalStatus: input.approval_status,

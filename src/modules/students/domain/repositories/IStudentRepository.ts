@@ -8,6 +8,7 @@ export interface StudentFilterParams {
   status?: string | undefined;
   location?: string | undefined;
   loginStatus?: string | undefined;
+  allowedStudentIds?: number[] | undefined;
   creatorId?: number | undefined;
 }
 

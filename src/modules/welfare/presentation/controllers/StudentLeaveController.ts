@@ -144,10 +144,11 @@ export class StudentLeaveController {
         return;
       }
 
-      const { filePath, mimeType } = await this.getLeaveProofUseCase.execute(paramsParsed.data.id);
+      const { filePath, mimeType } = await this.getLeaveProofUseCase.execute(paramsParsed.data.id, req.user);
 
       res.setHeader('Content-Type', mimeType);
-      res.setHeader('Content-Disposition', 'inline');
+      res.setHeader('Content-Disposition', 'attachment');
+      res.setHeader('Cache-Control', 'private, no-store');
       res.sendFile(filePath, (err) => {
         if (err && !res.headersSent) {
           next(err);

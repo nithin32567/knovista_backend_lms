@@ -4,11 +4,12 @@ import { ListUnlockRequestsQueryInput } from '../dto/ProgressDTO';
 export class ListModuleUnlockRequestsUseCase {
   constructor(private readonly progressRepository: IProgressRepository) {}
 
-  async execute(query: ListUnlockRequestsQueryInput) {
+  async execute(query: ListUnlockRequestsQueryInput, actor?: { id: number; role?: string | undefined }) {
     const page = query.page ?? 1;
     const perPage = query.per_page ?? 50;
 
     const { items, total } = await this.progressRepository.listUnlockRequests({
+      ...(actor ? { actor } : {}),
       studentId: query.student_id,
       batchId: query.batch_id,
       sectionId: query.section_id,

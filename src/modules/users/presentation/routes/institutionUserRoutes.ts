@@ -1,3 +1,4 @@
+import { requireRole } from '../../../../shared/middleware/requireRole';
 import { Router } from 'express';
 import { prisma } from '../../../../config/database';
 import { PrismaInstitutionUserRepository } from '../../infrastructure/persistence/PrismaInstitutionUserRepository';
@@ -37,6 +38,7 @@ export function createInstitutionUserRouter(): Router {
   router.post(
     '/institution-users',
     authenticate('institution_user'),
+    requireRole(['Admin']),
     handleOptionalProfilePic,
     controller.store
   );

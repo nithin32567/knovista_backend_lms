@@ -1,15 +1,22 @@
-import { describe, it, expect } from 'vitest';
+import { prisma } from '../../config/database';
+import { passwordSessionProof } from '../../shared/utils/sessionTokens';
+import { beforeAll, describe, it, expect } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { app } from '../../app';
 import { env } from '../../config/env';
 
 describe('Admin User Management & Dashboard Integration Tests', () => {
-  const adminToken = jwt.sign(
-    { sub: 1, prv: 'App\\Models\\InstitutionUser', role: 'Admin' },
-    env.JWT_SECRET,
-    { expiresIn: '1h' }
-  );
+  let adminToken: string;
+
+  beforeAll(async () => {
+    const admin = await prisma.institution_users.findUniqueOrThrow({ where: { id: 1n }, select: { password: true } });
+    adminToken = jwt.sign(
+      { pwd: passwordSessionProof(admin.password, env.JWT_SECRET), sub: 1, prv: 'App\\Models\\InstitutionUser', role: 'Admin' },
+      env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+  });
 
   describe('Dashboard Endpoints', () => {
     it('GET /api/dashboard/admin without token should return 401', async () => {
@@ -73,6 +80,7 @@ describe('Admin User Management & Dashboard Integration Tests', () => {
     it('POST /api/students/reset-password should return 422 when required fields are missing', async () => {
       const res = await request(app)
         .post('/api/students/reset-password')
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({});
 
       expect(res.status).toBe(422);
@@ -83,6 +91,7 @@ describe('Admin User Management & Dashboard Integration Tests', () => {
     it('POST /api/students/reset-password should return 422 when passwords do not match', async () => {
       const res = await request(app)
         .post('/api/students/reset-password')
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           student_id: 1,
           new_password: 'password123',

@@ -10,7 +10,7 @@ export interface ListStudentsResult {
 export class ListStudentsUseCase {
   constructor(private readonly studentRepository: IStudentRepository) {}
 
-  async execute(input: ListStudentsQueryInput, creatorId?: number): Promise<ListStudentsResult> {
+  async execute(input: ListStudentsQueryInput, creatorId?: number, allowedStudentIds?: number[]): Promise<ListStudentsResult> {
     const { page, per_page, keyword, status, location, login_status } = input;
 
     const { students, total } = await this.studentRepository.findMany({
@@ -21,6 +21,7 @@ export class ListStudentsUseCase {
       location,
       loginStatus: login_status,
       creatorId,
+      ...(allowedStudentIds ? { allowedStudentIds } : {}),
     });
 
     const data = students.map((s) => s.toResponseObject());

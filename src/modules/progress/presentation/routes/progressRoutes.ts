@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { requireRole } from '../../../../shared/middleware/requireRole';
 import { Router } from 'express';
 import { prisma } from '../../../../config/database';
 import { PrismaProgressRepository } from '../../infrastructure/persistence/PrismaProgressRepository';
@@ -17,8 +19,9 @@ import { GetStudentModulePerformanceUseCase } from '../../application/use-cases/
 import { PerformanceController } from '../controllers/PerformanceController';
 
 import { authenticate } from '../../../../shared/middleware/authenticate';
-import { validateRequest } from '../../../../shared/middleware/validateRequest';
+import { validateRequest, validateParams, validateQuery } from '../../../../shared/middleware/validateRequest';
 import {
+  ListUnlockRequestsQuerySchema,
   CompleteStudentTopicSchema,
   RequestUnlockNextModuleSchema,
   ApproveModuleUnlockSchema,
@@ -67,6 +70,7 @@ export function createProgressRouter(): Router {
 
   router.post(
     '/student-sections/request-unlock-next-module',
+    authenticate('student'),
     validateRequest(RequestUnlockNextModuleSchema),
     progressController.requestUnlock
   );
@@ -74,12 +78,15 @@ export function createProgressRouter(): Router {
   router.get(
     '/student-sections/module-unlock-requests',
     authenticate('institution_user'),
+    requireRole(['Admin', 'Team Lead', 'Tutor', 'Quality Analyst']),
+    validateQuery(ListUnlockRequestsQuerySchema),
     progressController.listUnlockRequests
   );
 
   router.post(
     '/student-sections/approve-module-unlock',
     authenticate('institution_user'),
+    requireRole(['Admin', 'Team Lead', 'Tutor', 'Quality Analyst']),
     validateRequest(ApproveModuleUnlockSchema),
     progressController.approveUnlock
   );
@@ -87,22 +94,24 @@ export function createProgressRouter(): Router {
   router.post(
     '/student-sections/complete-course',
     authenticate('institution_user'),
+    requireRole(['Admin', 'Team Lead']),
     validateRequest(CompleteCourseSchema),
     progressController.completeCourse
   );
 
-  router.get('/performances', authenticate('institution_user'), performanceController.index);
+  router.get('/performances', authenticate('institution_user'), requireRole(['Admin', 'Team Lead']), performanceController.index);
   router.post(
     '/performances',
     authenticate('institution_user'),
+    requireRole(['Admin', 'Team Lead']),
     validateRequest(SavePerformanceSchema),
     performanceController.store
   );
-  router.get('/performances/:id', authenticate('institution_user'), performanceController.show);
-  router.delete('/performances/:id', authenticate('institution_user'), performanceController.destroy);
+  router.get('/performances/:id', authenticate('institution_user'), requireRole(['Admin', 'Team Lead']), performanceController.show);
+  router.delete('/performances/:id', authenticate('institution_user'), requireRole(['Admin', 'Team Lead']), performanceController.destroy);
 
-  router.get('/students/:student_id/module-performance', performanceController.modulePerformance);
-  router.get('/students/completed-modules', authenticate('institution_user'), performanceController.completedModules);
+  router.get('/students/:student_id/module-performance', authenticate('any'), validateParams(z.object({ student_id: z.coerce.number().int().positive().safe() })), performanceController.modulePerformance);
+  router.get('/students/completed-modules', authenticate('institution_user'), requireRole(['Admin', 'Team Lead']), performanceController.completedModules);
 
   return router;
 }

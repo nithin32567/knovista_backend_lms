@@ -1,3 +1,4 @@
+import { requireRole } from '../../../../shared/middleware/requireRole';
 import { Router } from 'express';
 import { prisma } from '../../../../config/database';
 import { PrismaProgramRepository } from '../../infrastructure/persistence/PrismaProgramRepository';
@@ -49,6 +50,7 @@ import { CreateSpecialCategorySchema, UpdateSpecialCategorySchema } from '../../
 
 export function createCurriculumRouter(): Router {
   const router = Router();
+  const editCurriculum = requireRole(['Admin', 'Team Lead']);
 
   const programRepo = new PrismaProgramRepository(prisma);
   const sectionRepo = new PrismaSectionRepository(prisma);
@@ -101,11 +103,13 @@ export function createCurriculumRouter(): Router {
   router.get('/programs', programController.index);
   router.post(
     '/programs/clone',
+    editCurriculum,
     validateRequest(CloneProgramSchema),
     programController.clone
   );
   router.post(
     '/programs',
+    editCurriculum,
     handleProgramUpload,
     validateRequest(CreateProgramSchema),
     programController.store
@@ -113,27 +117,31 @@ export function createCurriculumRouter(): Router {
   router.get('/programs/:id', programController.show);
   router.put(
     '/programs/:id',
+    editCurriculum,
     handleProgramUpload,
     validateRequest(UpdateProgramSchema),
     programController.update
   );
   router.post(
     '/programs/:id',
+    editCurriculum,
     handleProgramUpload,
     validateRequest(UpdateProgramSchema),
     programController.update
   );
   router.post(
     '/programs/:id/update',
+    editCurriculum,
     handleProgramUpload,
     validateRequest(UpdateProgramSchema),
     programController.update
   );
-  router.delete('/programs/:id', programController.destroy);
+  router.delete('/programs/:id', editCurriculum, programController.destroy);
 
   router.get('/sections', sectionController.index);
   router.post(
     '/sections',
+    editCurriculum,
     handleSectionUpload,
     validateRequest(CreateSectionSchema),
     sectionController.store
@@ -141,32 +149,36 @@ export function createCurriculumRouter(): Router {
   router.get('/sections/:id', sectionController.show);
   router.put(
     '/sections/:id',
+    editCurriculum,
     handleSectionUpload,
     validateRequest(UpdateSectionSchema),
     sectionController.update
   );
   router.post(
     '/sections/:id',
+    editCurriculum,
     handleSectionUpload,
     validateRequest(UpdateSectionSchema),
     sectionController.update
   );
   router.post(
     '/sections/:id/update',
+    editCurriculum,
     handleSectionUpload,
     validateRequest(UpdateSectionSchema),
     sectionController.update
   );
 
   router.get('/modules', moduleController.index);
-  router.post('/modules', validateRequest(CreateModuleSchema), moduleController.store);
+  router.post('/modules', editCurriculum, validateRequest(CreateModuleSchema), moduleController.store);
   router.get('/modules/:id', moduleController.show);
-  router.put('/modules/:id', validateRequest(UpdateModuleSchema), moduleController.update);
-  router.post('/modules/:id/update', validateRequest(UpdateModuleSchema), moduleController.update);
+  router.put('/modules/:id', editCurriculum, validateRequest(UpdateModuleSchema), moduleController.update);
+  router.post('/modules/:id/update', editCurriculum, validateRequest(UpdateModuleSchema), moduleController.update);
 
   router.get('/topics', topicController.index);
   router.post(
     '/topics',
+    editCurriculum,
     handleTopicUpload,
     validateRequest(CreateTopicSchema),
     topicController.store
@@ -174,28 +186,31 @@ export function createCurriculumRouter(): Router {
   router.get('/topics/:id', topicController.show);
   router.put(
     '/topics/:id',
+    editCurriculum,
     handleTopicUpload,
     validateRequest(UpdateTopicSchema),
     topicController.update
   );
   router.post(
     '/topics/:id',
+    editCurriculum,
     handleTopicUpload,
     validateRequest(UpdateTopicSchema),
     topicController.update
   );
   router.post(
     '/topics/:id/update',
+    editCurriculum,
     handleTopicUpload,
     validateRequest(UpdateTopicSchema),
     topicController.update
   );
 
   router.get('/special-categories', specialCategoryController.index);
-  router.post('/special-categories', validateRequest(CreateSpecialCategorySchema), specialCategoryController.store);
+  router.post('/special-categories', editCurriculum, validateRequest(CreateSpecialCategorySchema), specialCategoryController.store);
   router.get('/special-categories/:id', specialCategoryController.show);
-  router.put('/special-categories/:id', validateRequest(UpdateSpecialCategorySchema), specialCategoryController.update);
-  router.post('/special-categories/:id/update', validateRequest(UpdateSpecialCategorySchema), specialCategoryController.update);
+  router.put('/special-categories/:id', editCurriculum, validateRequest(UpdateSpecialCategorySchema), specialCategoryController.update);
+  router.post('/special-categories/:id/update', editCurriculum, validateRequest(UpdateSpecialCategorySchema), specialCategoryController.update);
 
   return router;
 }

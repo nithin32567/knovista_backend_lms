@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { passwordSessionProof } from '../../../../shared/utils/sessionTokens';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { IStudentRepository } from '../../domain/repositories/IStudentRepository';
@@ -46,6 +48,8 @@ export class StudentRegisterUseCase {
 
     const tokenPayload = {
       sub: student.id,
+      pwd: passwordSessionProof(student.passwordHash, env.JWT_SECRET),
+      jti: randomUUID(),
       prv: 'App\\Models\\Student',
     };
 

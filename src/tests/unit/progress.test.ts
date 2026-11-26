@@ -211,7 +211,7 @@ describe('Progress & Evaluation Module Unit Tests', () => {
     expect(result.data[0]?.status).toBe('pending');
   });
 
-  it('ApproveModuleUnlockUseCase should activate module and previous module completion', async () => {
+  it('ApproveModuleUnlockUseCase should forward the requested section and approver', async () => {
     const useCase = new ApproveModuleUnlockUseCase(mockProgressRepo);
     const result = await useCase.execute(
       {
@@ -224,7 +224,7 @@ describe('Progress & Evaluation Module Unit Tests', () => {
     );
 
     expect(result.message).toBe('Module unlock approved and activated successfully');
-    expect(mockProgressRepo.approveModuleUnlock).toHaveBeenCalledWith(10, 2, 3, 1);
+    expect(mockProgressRepo.approveModuleUnlock).toHaveBeenCalledWith(10, 2, 3, 1, 1, undefined);
   });
 
   it('RecordPerformanceUseCase should update student module evaluation grade', async () => {

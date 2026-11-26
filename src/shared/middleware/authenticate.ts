@@ -1,3 +1,4 @@
+import { hasValidSessionProof, sessionTokenDigest } from '../utils/sessionTokens';
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../../config/env';
@@ -32,16 +33,27 @@ export function authenticate(guard: 'student' | 'institution_user' | 'any') {
       const isStudentMatch = (guard === 'student' || guard === 'any') && provider === 'App\\Models\\Student';
       const isStaffMatch = (guard === 'institution_user' || guard === 'any') && provider === 'App\\Models\\InstitutionUser';
 
+      if (!isStudentMatch && !isStaffMatch) {
+        throw new UnauthorizedError('Access guard mismatch');
+      }
+      if (typeof claims.exp !== 'number' || !Number.isSafeInteger(claims.exp)) {
+        throw new UnauthorizedError('Missing token expiration');
+      }
+      const session = { digest: sessionTokenDigest(token), expiresAt: new Date(claims.exp * 1000) };
+      const revoked = await prisma.revoked_sessions.findUnique({ where: { token_digest: session.digest } });
+      if (revoked) throw new UnauthorizedError('Session has ended');
+
       if (isStudentMatch) {
         const student = await prisma.students.findUnique({
           where: { id: BigInt(userId) },
         });
 
-        if (student && student.status === 'Active') {
+        if (student && student.status === 'Active' && hasValidSessionProof(claims.pwd, student.password, env.JWT_SECRET)) {
           req.user = {
             id: Number(student.id),
             type: 'student',
             entity: student,
+            session,
           };
           next();
           return;
@@ -59,7 +71,7 @@ export function authenticate(guard: 'student' | 'institution_user' | 'any') {
           include: { role: true },
         });
 
-        if (!staff || staff.status !== 'Active') {
+        if (!staff || staff.status !== 'Active' || staff.role.status !== 'Active' || !hasValidSessionProof(claims.pwd, staff.password, env.JWT_SECRET)) {
           next(new UnauthorizedError('Staff account not found or deactivated'));
           return;
         }
@@ -69,6 +81,7 @@ export function authenticate(guard: 'student' | 'institution_user' | 'any') {
           type: 'institution_user',
           role: staff.role.name,
           entity: staff,
+          session,
         };
         next();
         return;

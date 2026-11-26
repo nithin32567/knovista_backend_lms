@@ -7,7 +7,7 @@ export class CompleteStudentTopicUseCase {
 
   async execute(input: CompleteStudentTopicInput, studentId: number) {
     const existing = await this.progressRepository.findTopicProgressById(input.student_topic_id);
-    if (!existing) {
+    if (!existing || existing.studentId !== studentId) {
       throw new NotFoundError('Student topic not found');
     }
 

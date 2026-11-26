@@ -19,7 +19,7 @@ export class CancelFeeUseCase {
       throw new AppError('Only pending installments can be cancelled', 422);
     }
 
-    const updatedBy = input.updated_by ?? authUserId;
+    const updatedBy = authUserId;
 
     return this.feeCollectionRepository.cancelFee(feeId, updatedBy);
   }

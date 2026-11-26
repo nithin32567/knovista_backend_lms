@@ -1,3 +1,4 @@
+import { passwordSessionProof } from '../../shared/utils/sessionTokens';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
@@ -182,28 +183,30 @@ describe('Welfare Module API Integration Tests', () => {
     });
     reportHeadId = reportHead.id;
 
+    const admin = await prisma.institution_users.findUniqueOrThrow({ where: { id: 1n }, select: { password: true } });
+    const fixtureProof = passwordSessionProof('hashed-password-placeholder', env.JWT_SECRET);
     studentToken = jwt.sign(
-      { sub: Number(studentId), prv: 'App\\Models\\Student' },
+      { pwd: fixtureProof, sub: Number(studentId), prv: 'App\\Models\\Student' },
       env.JWT_SECRET,
       { expiresIn: '1h' },
     );
     otherStudentToken = jwt.sign(
-      { sub: Number(otherStudentId), prv: 'App\\Models\\Student' },
+      { pwd: fixtureProof, sub: Number(otherStudentId), prv: 'App\\Models\\Student' },
       env.JWT_SECRET,
       { expiresIn: '1h' },
     );
     adminToken = jwt.sign(
-      { sub: 1, prv: 'App\\Models\\InstitutionUser', role: 'Admin' },
+      { pwd: passwordSessionProof(admin.password, env.JWT_SECRET), sub: 1, prv: 'App\\Models\\InstitutionUser', role: 'Admin' },
       env.JWT_SECRET,
       { expiresIn: '1h' },
     );
     tutorToken = jwt.sign(
-      { sub: Number(tutorUserId), prv: 'App\\Models\\InstitutionUser', role: 'Tutor' },
+      { pwd: fixtureProof, sub: Number(tutorUserId), prv: 'App\\Models\\InstitutionUser', role: 'Tutor' },
       env.JWT_SECRET,
       { expiresIn: '1h' },
     );
     otherTutorToken = jwt.sign(
-      { sub: Number(otherTutorUserId), prv: 'App\\Models\\InstitutionUser', role: 'Tutor' },
+      { pwd: fixtureProof, sub: Number(otherTutorUserId), prv: 'App\\Models\\InstitutionUser', role: 'Tutor' },
       env.JWT_SECRET,
       { expiresIn: '1h' },
     );

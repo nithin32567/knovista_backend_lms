@@ -22,7 +22,7 @@ export class CollectFeeUseCase {
       throw new AppError('This installment has already been approved', 422);
     }
 
-    const collectedById = input.collected_by ?? authUserId;
+    const collectedById = authUserId;
 
     return this.feeCollectionRepository.collectFee(feeId, {
       paidAmount: input.paid_amount,

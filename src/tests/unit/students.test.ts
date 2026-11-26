@@ -108,13 +108,13 @@ describe('Students Use Cases', () => {
         student_id: 1,
         new_password: 'newpassword123',
         confirm_password: 'newpassword123',
-        reseted_by: 1,
+        reseted_by: 99,
       },
       1
     );
 
     expect(result.message).toBe('Student password reset successfully');
-    expect(mockRepo.updatePassword).toHaveBeenCalled();
+    expect(mockRepo.updatePassword).toHaveBeenCalledWith(1, expect.any(String), 1);
   });
 
   it('ResetStudentPasswordUseCase should throw NotFoundError when student not found', async () => {
@@ -130,7 +130,7 @@ describe('Students Use Cases', () => {
         student_id: 999,
         new_password: 'newpassword123',
         confirm_password: 'newpassword123',
-      })
+      }, 1)
     ).rejects.toThrow(NotFoundError);
   });
 });

@@ -1,3 +1,4 @@
+import { isBatchScopedRole } from '../../../welfare/application/services/WelfareAccessService';
 import { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -83,14 +84,22 @@ export class StudentController {
     private readonly getBlockReasonsUseCase?: GetStudentBlockReasonsUseCase | undefined,
     private readonly unblockModulesUseCase?: UnblockStudentModulesUseCase | undefined,
     private readonly updateLoginStatusUseCase?: UpdateLoginStatusUseCase | undefined,
+    private readonly assignedStudentIds?: (id: number, role: import('../../../welfare/application/services/WelfareAccessService').BatchScopedRole) => Promise<number[]>,
   ) {}
 
   list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const parsedQuery = ListStudentsQuerySchema.parse(req.query);
-      const isSalesAnalyst = req.user?.role === 'Sales Analyst';
-      const creatorId = isSalesAnalyst ? req.user?.id : undefined;
-      const result = await this.listStudentsUseCase.execute(parsedQuery, creatorId);
+      const user = req.user;
+      if (user?.type !== 'institution_user') throw new ForbiddenError('Student list access denied');
+      const creatorId = user.role === 'Sales Analyst' ? user.id : undefined;
+      let allowedStudentIds: number[] | undefined;
+      if (isBatchScopedRole(user.role)) {
+        allowedStudentIds = await this.assignedStudentIds?.(user.id, user.role) ?? [];
+      } else if (!['Admin', 'Team Lead', 'Sales Analyst'].includes(user.role ?? '')) {
+        throw new ForbiddenError('Student list access denied');
+      }
+      const result = await this.listStudentsUseCase.execute(parsedQuery, creatorId, allowedStudentIds);
       res.status(200).json({ success: true, data: result.data, pagination: result.pagination });
     } catch (error) {
       next(error);
@@ -255,7 +264,7 @@ export class StudentController {
     try {
       if (!this.updateLoginStatusUseCase) throw new Error('Update login status use case not configured');
       const input = req.body as UpdateLoginStatusInput;
-      if (req.user?.type === 'student' && input.student_id !== req.user.id) {
+      if (!req.user || (req.user.type === 'student' ? input.student_id !== req.user.id : !['Admin', 'Team Lead'].includes(req.user.role ?? ''))) {
         throw new ForbiddenError('Access denied');
       }
       const loginStatus =

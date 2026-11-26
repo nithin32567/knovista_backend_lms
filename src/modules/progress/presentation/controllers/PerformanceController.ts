@@ -1,3 +1,4 @@
+import { ForbiddenError } from '../../../../shared/errors/ForbiddenError';
 import { Request, Response, NextFunction } from 'express';
 import { RecordPerformanceUseCase } from '../../application/use-cases/RecordPerformanceUseCase';
 import { ListPerformanceUseCase } from '../../application/use-cases/ListPerformanceUseCase';
@@ -72,6 +73,11 @@ export class PerformanceController {
   modulePerformance = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const studentId = Number(req.params['student_id']);
+      const user = req.user;
+      const allowed = user?.type === 'student'
+        ? user.id === studentId
+        : user?.role === 'Admin' || user?.role === 'Team Lead';
+      if (!allowed) throw new ForbiddenError('Student performance access denied');
       const result = await this.getStudentModulePerformanceUseCase.execute(studentId);
       res.status(200).json({
         success: true,

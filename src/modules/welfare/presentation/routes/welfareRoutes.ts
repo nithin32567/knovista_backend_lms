@@ -1,3 +1,4 @@
+import { requireRole } from '../../../../shared/middleware/requireRole';
 import { Router } from 'express';
 import { prisma } from '../../../../config/database';
 import { authenticate } from '../../../../shared/middleware/authenticate';
@@ -36,7 +37,7 @@ export function createWelfareRouter(): Router {
   const createLeaveUseCase = new CreateLeaveUseCase(studentLeaveRepo, adminNotificationRepo, prisma);
   const listLeavesUseCase = new ListLeavesUseCase(studentLeaveRepo, prisma);
   const authorizeLeaveUseCase = new AuthorizeLeaveUseCase(studentLeaveRepo, studentNotificationRepo);
-  const getLeaveProofUseCase = new GetLeaveProofUseCase(studentLeaveRepo);
+  const getLeaveProofUseCase = new GetLeaveProofUseCase(studentLeaveRepo, prisma);
 
   const createStudentReportUseCase = new CreateStudentReportUseCase(studentReportRepo, prisma);
   const listStudentReportsUseCase = new ListStudentReportsUseCase(studentReportRepo, prisma);
@@ -70,11 +71,12 @@ export function createWelfareRouter(): Router {
   router.post(
     '/student-leaves/:id/authorize',
     authenticate('institution_user'),
+    requireRole(['Admin', 'Team Lead']),
     leaveController.authorizeLeave,
   );
   router.get(
     '/student-leaves/:id/proof',
-    authenticate('institution_user'),
+    authenticate('any'),
     leaveController.getLeaveProof,
   );
 
