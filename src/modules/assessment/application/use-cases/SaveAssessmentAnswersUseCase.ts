@@ -1,3 +1,4 @@
+import { ForbiddenError } from '../../../../shared/errors/ForbiddenError';
 import { IAssessmentRepository } from '../../domain/repositories/IAssessmentRepository';
 import { SaveAssessmentAnswersInput } from '../dto/AssessmentDTO';
 import { StudentAssessmentAnswer } from '../../domain/entities/StudentAssessmentAnswer';
@@ -8,9 +9,12 @@ export class SaveAssessmentAnswersUseCase {
   async execute(dto: SaveAssessmentAnswersInput): Promise<StudentAssessmentAnswer[]> {
     const evaluatedAnswers = await Promise.all(
       dto.answers.map(async (item) => {
-        let marks = item.marks;
+        let marks: boolean | undefined;
         if (marks === undefined) {
           const assessment = await this.assessmentRepository.findAssessmentById(item.assessment_id);
+          if (!assessment || assessment.topicId !== item.topic_id || assessment.status !== 'Active') {
+            throw new ForbiddenError('Assessment does not belong to the active topic');
+          }
           if (assessment) {
             const correctAnswer = assessment.correctAnswer ?? assessment.answer;
             if (correctAnswer !== undefined && correctAnswer !== null) {

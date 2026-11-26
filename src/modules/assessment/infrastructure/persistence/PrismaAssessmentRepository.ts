@@ -1,3 +1,4 @@
+import { ForbiddenError } from '../../../../shared/errors/ForbiddenError';
 import { prisma } from '../../../../config/database';
 import { IAssessmentRepository, SaveAssessmentAnswerInput } from '../../domain/repositories/IAssessmentRepository';
 import { TopicAssessment } from '../../domain/entities/TopicAssessment';
@@ -31,6 +32,20 @@ export class PrismaAssessmentRepository implements IAssessmentRepository {
   }
 
   async saveAssessmentAnswers(answers: SaveAssessmentAnswerInput[]): Promise<StudentAssessmentAnswer[]> {
+    for (const answer of answers) {
+      const topic = await prisma.student_section_module_topics.findFirst({
+        where: {
+          id: BigInt(answer.studentTopicId),
+          student_id: BigInt(answer.studentId),
+          topic_id: BigInt(answer.topicId),
+          student_section_module: {
+            status: { in: ['Unlocked', 'active', 'completed'] },
+            student_section: { student_id: BigInt(answer.studentId) },
+          },
+        },
+      });
+      if (!topic) throw new ForbiddenError('Student topic is not available for assessment');
+    }
     const results: StudentAssessmentAnswer[] = [];
 
     for (const ans of answers) {

@@ -16,7 +16,7 @@ export function authenticate(guard: 'student' | 'institution_user' | 'any') {
     const token = authHeader.substring(7);
 
     try {
-      const decoded = jwt.verify(token, env.JWT_SECRET) as unknown;
+      const decoded = jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] }) as unknown;
       if (typeof decoded !== 'object' || decoded === null || !('sub' in decoded)) {
         next(new UnauthorizedError('Invalid token payload structure'));
         return;
@@ -26,19 +26,18 @@ export function authenticate(guard: 'student' | 'institution_user' | 'any') {
       const userId = Number(claims.sub);
       const provider = claims.prv ?? '';
 
-      const isStudentMatch =
-        (guard === 'student' && (!provider || provider.includes('Student'))) ||
-        (guard === 'any' && (provider.includes('Student') || !provider));
-      const isStaffMatch =
-        (guard === 'institution_user' && (!provider || provider.includes('InstitutionUser'))) ||
-        (guard === 'any' && provider.includes('InstitutionUser'));
+      if (!Number.isSafeInteger(userId) || userId <= 0) {
+        throw new UnauthorizedError('Invalid token subject');
+      }
+      const isStudentMatch = (guard === 'student' || guard === 'any') && provider === 'App\\Models\\Student';
+      const isStaffMatch = (guard === 'institution_user' || guard === 'any') && provider === 'App\\Models\\InstitutionUser';
 
       if (isStudentMatch) {
         const student = await prisma.students.findUnique({
           where: { id: BigInt(userId) },
         });
 
-        if (student && student.status !== 'Deleted') {
+        if (student && student.status === 'Active') {
           req.user = {
             id: Number(student.id),
             type: 'student',
@@ -60,7 +59,7 @@ export function authenticate(guard: 'student' | 'institution_user' | 'any') {
           include: { role: true },
         });
 
-        if (!staff || staff.status === 'Deleted') {
+        if (!staff || staff.status !== 'Active') {
           next(new UnauthorizedError('Staff account not found or deactivated'));
           return;
         }

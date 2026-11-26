@@ -1,3 +1,4 @@
+import { requireRole } from '../../../../shared/middleware/requireRole';
 import { Router } from 'express';
 import { prisma } from '../../../../config/database';
 import { PrismaStudentRepository } from '../../infrastructure/persistence/PrismaStudentRepository';
@@ -72,7 +73,7 @@ export function createStudentRouter(): Router {
   router.get('/block-reasons', authenticate('institution_user'), studentController.getBlockReasons);
 
   router.post('/register', validateRequest(CreateStudentSchema), studentController.create);
-  router.post('/reset-password', validateRequest(AdminResetStudentPasswordSchema), studentController.resetPassword);
+  router.post('/reset-password', authenticate('institution_user'), requireRole(['Admin', 'Team Lead']), validateRequest(AdminResetStudentPasswordSchema), studentController.resetPassword);
   router.post('/block', authenticate('institution_user'), validateRequest(BlockStudentSchema), studentController.blockStudent);
   router.post('/unblock', authenticate('institution_user'), validateRequest(UnblockStudentSchema), studentController.unblockStudent);
   router.post('/drop', authenticate('institution_user'), validateRequest(DropStudentSchema), studentController.dropStudent);

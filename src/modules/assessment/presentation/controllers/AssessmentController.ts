@@ -1,3 +1,4 @@
+import { ForbiddenError } from '../../../../shared/errors/ForbiddenError';
 import { Request, Response, NextFunction } from 'express';
 import { SaveAssessmentAnswersUseCase } from '../../application/use-cases/SaveAssessmentAnswersUseCase';
 import { GetStudentAssessmentAnswersUseCase } from '../../application/use-cases/GetStudentAssessmentAnswersUseCase';
@@ -15,6 +16,9 @@ export class AssessmentController {
   async saveAssessmentAnswers(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const input = req.body as SaveAssessmentAnswersInput;
+      if (!req.user || input.answers.some((answer) => answer.student_id !== req.user?.id) || req.user.type !== 'student') {
+        throw new ForbiddenError('Only the student may submit their answers');
+      }
       const result = await this.saveAssessmentAnswersUseCase.execute(input);
       const data = result.map((item) => item.toRawResponseObject());
 
@@ -27,6 +31,9 @@ export class AssessmentController {
   async getStudentAssessmentAnswers(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const query = req.query as unknown as GetStudentAssessmentAnswersQuery;
+      if (!req.user || (req.user.type === 'student' && query.student_id !== req.user.id) || (req.user.type === 'institution_user' && !['Admin', 'Team Lead'].includes(req.user.role ?? ''))) {
+        throw new ForbiddenError('Assessment access denied');
+      }
       const result = await this.getStudentAssessmentAnswersUseCase.execute(
         query.student_id,
         query.topic_id

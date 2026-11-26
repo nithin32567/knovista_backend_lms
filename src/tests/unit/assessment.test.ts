@@ -153,7 +153,7 @@ describe('Assessment Module Unit Tests', () => {
       expect(mockRepo.recalculateSectionProgressByStudentTopicIds).toHaveBeenCalledWith([12]);
     });
 
-    it('should respect explicitly provided marks without lookup', async () => {
+    it('should reject forged marks when assessment does not exist', async () => {
       const mockRepo: IAssessmentRepository = {
         findAssessmentsByTopicId: vi.fn(),
         findAssessmentById: vi.fn(),
@@ -176,7 +176,7 @@ describe('Assessment Module Unit Tests', () => {
       };
 
       const useCase = new SaveAssessmentAnswersUseCase(mockRepo);
-      const result = await useCase.execute({
+      await expect(useCase.execute({
         answers: [
           {
             student_id: 5,
@@ -187,12 +187,9 @@ describe('Assessment Module Unit Tests', () => {
             marks: false,
           },
         ],
-      });
-
-      expect(result).toHaveLength(1);
-      expect(result[0]?.marks).toBe(false);
-      expect(mockRepo.findAssessmentById).not.toHaveBeenCalled();
-      expect(mockRepo.markStudentTopicsCompleted).toHaveBeenCalledWith([12]);
+      })).rejects.toThrow('Assessment does not belong to the active topic');
+      expect(mockRepo.saveAssessmentAnswers).not.toHaveBeenCalled();
+      expect(mockRepo.markStudentTopicsCompleted).not.toHaveBeenCalled();
     });
   });
 });
