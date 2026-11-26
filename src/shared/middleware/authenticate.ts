@@ -26,8 +26,12 @@ export function authenticate(guard: 'student' | 'institution_user' | 'any') {
       const userId = Number(claims.sub);
       const provider = claims.prv ?? '';
 
-      const isStudentMatch = guard === 'student' || (guard === 'any' && (provider.includes('Student') || !provider));
-      const isStaffMatch = guard === 'institution_user' || (guard === 'any' && provider.includes('InstitutionUser'));
+      const isStudentMatch =
+        (guard === 'student' && (!provider || provider.includes('Student'))) ||
+        (guard === 'any' && (provider.includes('Student') || !provider));
+      const isStaffMatch =
+        (guard === 'institution_user' && (!provider || provider.includes('InstitutionUser'))) ||
+        (guard === 'any' && provider.includes('InstitutionUser'));
 
       if (isStudentMatch) {
         const student = await prisma.students.findUnique({

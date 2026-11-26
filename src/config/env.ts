@@ -14,6 +14,7 @@ const envSchema = z.object({
   REDIS_HOST: z.string().default('127.0.0.1'),
   REDIS_PORT: z.string().transform(Number).default('6379'),
   REDIS_PASSWORD: z.string().optional(),
+  APP_URL: z.string().default('http://localhost:8000'),
   CORS_ORIGIN: z.string().default('*'),
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),

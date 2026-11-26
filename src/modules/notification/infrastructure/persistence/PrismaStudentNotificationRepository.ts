@@ -8,8 +8,44 @@ export interface IStudentNotificationRepository {
   markAllAsViewed(studentId: number): Promise<number>;
 }
 
-export class PrismaStudentNotificationRepository implements IStudentNotificationRepository {
+export interface CreateStudentNotificationData {
+  studentId: number;
+  title: string;
+  message: string;
+  type?: string | null | undefined;
+}
+
+export interface IStudentNotificationWriter {
+  create(data: CreateStudentNotificationData): Promise<StudentNotification>;
+}
+
+export class PrismaStudentNotificationRepository
+  implements IStudentNotificationRepository, IStudentNotificationWriter
+{
   constructor(private readonly prisma: PrismaClient) {}
+
+  async create(data: CreateStudentNotificationData): Promise<StudentNotification> {
+    const record = await this.prisma.student_notifications.create({
+      data: {
+        student_id: BigInt(data.studentId),
+        title: data.title,
+        message: data.message,
+        status: 'new',
+        type: data.type ?? null,
+      },
+    });
+
+    return new StudentNotification({
+      id: Number(record.id),
+      studentId: Number(record.student_id),
+      title: record.title,
+      message: record.message,
+      status: record.status,
+      type: record.type,
+      createdAt: record.created_at,
+      updatedAt: record.updated_at,
+    });
+  }
 
   async findLatestByStudentId(studentId: number, limit: number): Promise<StudentNotification[]> {
     const records = await this.prisma.student_notifications.findMany({
