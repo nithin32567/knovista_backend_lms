@@ -11,7 +11,7 @@ export interface SaveAssessmentAnswerInput {
 }
 
 export interface IAssessmentRepository {
-  findAssessmentsByTopicId(topicId: number): Promise<TopicAssessment[]>;
+  findAssessmentsByTopicId(topicId: number, studentId?: number): Promise<TopicAssessment[]>;
   findAssessmentById(id: number): Promise<TopicAssessment | null>;
   saveAssessmentAnswers(answers: SaveAssessmentAnswerInput[]): Promise<StudentAssessmentAnswer[]>;
   getStudentAssessmentAnswers(studentId: number, topicId: number): Promise<StudentAssessmentAnswer[]>;

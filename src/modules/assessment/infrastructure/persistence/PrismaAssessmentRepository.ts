@@ -1,4 +1,6 @@
 import { Prisma } from '@prisma/client';
+import { NotFoundError } from '../../../../shared/errors/NotFoundError';
+import { CONTENT_ENROLLMENT_STATUSES, CONTENT_MODULE_STATUSES } from '../../../batch/domain/repositories/IStudentCourseRepository';
 import { ForbiddenError } from '../../../../shared/errors/ForbiddenError';
 import { prisma } from '../../../../config/database';
 import { IAssessmentRepository, SaveAssessmentAnswerInput } from '../../domain/repositories/IAssessmentRepository';
@@ -6,18 +8,46 @@ import { TopicAssessment } from '../../domain/entities/TopicAssessment';
 import { StudentAssessmentAnswer } from '../../domain/entities/StudentAssessmentAnswer';
 
 export class PrismaAssessmentRepository implements IAssessmentRepository {
-  async findAssessmentsByTopicId(topicId: number): Promise<TopicAssessment[]> {
-    const records = await prisma.topic_assessments.findMany({
-      where: {
-        topic_id: BigInt(topicId),
-        status: 'Active',
-      },
-      orderBy: {
-        priority: 'asc',
-      },
-    });
+  async findAssessmentsByTopicId(topicId: number, studentId?: number): Promise<TopicAssessment[]> {
+    const topicKey = BigInt(topicId);
+    const assessmentFilter = {
+      where: { status: { in: ['Active', 'active'] } },
+      orderBy: [{ priority: 'asc' }, { id: 'asc' }],
+    } satisfies Prisma.topics$topic_assessmentsArgs;
 
-    return records.map((r) => this.mapTopicAssessment(r));
+    if (studentId === undefined) {
+      const records = await prisma.topic_assessments.findMany({
+        ...assessmentFilter,
+        where: { ...assessmentFilter.where, topic_id: topicKey },
+      });
+      return records.map((record) => this.mapTopicAssessment(record));
+    }
+
+    const owner = BigInt(studentId);
+    const topic = await prisma.topics.findFirst({
+      where: {
+        id: topicKey,
+        status: { in: ['Active', 'active'] },
+        student_section_module_topics: {
+          some: {
+            student_id: owner,
+            status: { notIn: ['Deleted', 'deleted'] },
+            student_section_module: {
+              status: { in: [...CONTENT_MODULE_STATUSES] },
+              module: { status: { in: ['Active', 'active'] }, topics: { some: { id: topicKey } } },
+              student_section: {
+                student_id: owner,
+                status: { in: [...CONTENT_ENROLLMENT_STATUSES] },
+                batch: { section: { status: { in: ['Active', 'active'] }, modules: { some: { topics: { some: { id: topicKey } } } } } },
+              },
+            },
+          },
+        },
+      },
+      select: { topic_assessments: assessmentFilter },
+    });
+    if (!topic) throw new NotFoundError('Topic not found');
+    return topic.topic_assessments.map((record) => this.mapTopicAssessment(record));
   }
 
   async findAssessmentById(id: number): Promise<TopicAssessment | null> {
@@ -29,7 +59,10 @@ export class PrismaAssessmentRepository implements IAssessmentRepository {
       return null;
     }
 
-    return this.mapTopicAssessment(record);
+    return this.mapTopicAssessment({
+      ...record,
+      correct_answer: record.correct_answer ?? this.legacyAnswer(record.answer),
+    });
   }
 
   async saveAssessmentAnswers(answers: SaveAssessmentAnswerInput[]): Promise<StudentAssessmentAnswer[]> {
@@ -207,6 +240,23 @@ export class PrismaAssessmentRepository implements IAssessmentRepository {
         data: updateData,
       });
     }
+  }
+
+  private legacyAnswer(answer: Prisma.JsonValue): string | null {
+    if (typeof answer === 'string') {
+      if (!answer.trimStart().startsWith('{')) return answer;
+      try {
+        const parsed: unknown = JSON.parse(answer);
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return answer;
+        const first: unknown = Object.values(parsed)[0];
+        return typeof first === 'string' ? first : answer;
+      } catch {
+        return answer;
+      }
+    }
+    if (answer === null || typeof answer !== 'object' || Array.isArray(answer)) return null;
+    const first = Object.values(answer)[0];
+    return typeof first === 'string' ? first : null;
   }
 
   private mapTopicAssessment(r: {

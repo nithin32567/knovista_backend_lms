@@ -49,8 +49,9 @@ export class AssessmentController {
   async getTopicAssessments(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const topicId = Number(req.params['id']);
-      const isStaff = req.user?.type === 'institution_user';
-      const result = await this.getTopicAssessmentsUseCase.execute(topicId);
+      if (!req.user) throw new ForbiddenError('Assessment access denied');
+      const isStaff = req.user.type === 'institution_user';
+      const result = await this.getTopicAssessmentsUseCase.execute(topicId, isStaff ? undefined : req.user.id);
       const data = result.map((item) => item.toResponseObject(isStaff));
 
       sendSuccess(res, data);

@@ -15,6 +15,7 @@ import { createNotificationRouter } from './modules/notification/presentation/ro
 import { createProgressRouter } from './modules/progress/presentation/routes/progressRoutes';
 import { createAssessmentRouter } from './modules/assessment/presentation/routes/assessmentRoutes';
 import { createFinanceRouter } from './modules/finance/presentation/routes/financeRoutes';
+import { createStudentTicketRouter } from './modules/tickets/presentation/routes/studentTicketRoutes';
 import { createWelfareRouter } from './modules/welfare/presentation/routes/welfareRoutes';
 
 export function createApp(): Express {
@@ -112,6 +113,11 @@ export function createApp(): Express {
   app.use(env.API_PREFIX, welfareRouter);
   app.use('/api', welfareRouter);
   app.use('/', welfareRouter);
+
+  const studentTicketRouter = createStudentTicketRouter();
+  for (const prefix of new Set([env.API_PREFIX, '/api'])) {
+    app.use(prefix, studentTicketRouter);
+  }
 
   app.use(errorHandler);
 

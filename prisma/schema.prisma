@@ -48,6 +48,7 @@ model students {
   student_notifications    student_notifications[]
   student_leaves           student_leaves[]
   student_reports          student_reports[]
+  student_tickets          student_tickets[]
 }
 
 model leave_reasons {
@@ -417,6 +418,7 @@ model institution_users {
   updated_at               DateTime?
   role                     institution_roles @relation(fields: [role_id], references: [id])
   admin_notifications      admin_notifications[]
+  forwarded_tickets        student_tickets[]
 }
 
 model admin_notifications {
@@ -499,6 +501,37 @@ model student_reports {
 
   @@index([student_id])
   @@index([report_head_id])
+}
+
+model student_tickets {
+  id                BigInt             @id @default(autoincrement())
+  student_id        BigInt
+  title             String             @db.VarChar(255)
+  description       String             @db.Text
+  attachment1       String?            @db.VarChar(255)
+  attachment2       String?            @db.VarChar(255)
+  attachment3       String?            @db.VarChar(255)
+  attachment4       String?            @db.VarChar(255)
+  attachment5       String?            @db.VarChar(255)
+  assigned_to       String?            @db.VarChar(255)
+  assigned_by       BigInt?
+  forwarded_to      BigInt?
+  status            String             @default("Open") @db.VarChar(255)
+  replied_comment   String?            @db.Text
+  replied_by        BigInt?
+  closed_by         BigInt?
+  closed_on         DateTime?
+  replied_on        DateTime?
+  reply_attachment1 String?            @db.VarChar(255)
+  reply_attachment2 String?            @db.VarChar(255)
+  reply_attachment3 String?            @db.VarChar(255)
+  created_at        DateTime?          @default(now())
+  updated_at        DateTime?          @updatedAt
+  student           students           @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  forwarded_user    institution_users? @relation(fields: [forwarded_to], references: [id], onDelete: SetNull)
+
+  @@index([student_id, created_at, id], map: "student_tickets_student_created_idx")
+  @@index([forwarded_to], map: "student_tickets_forwarded_to_idx")
 }
 
 model revoked_sessions {

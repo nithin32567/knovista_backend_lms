@@ -26,3 +26,17 @@ export const StudentSectionQuerySchema = z.object({
 
 export type StudentSectionQueryInput = z.infer<typeof StudentSectionQuerySchema>;
 
+
+const positiveId = z.union([z.number(), z.string().regex(/^\d+$/)])
+  .pipe(z.coerce.number().int().positive().safe());
+
+export const StudentCourseListSchema = z.object({
+  student_id: positiveId.optional(),
+});
+
+export const StudentCourseDetailsSchema = StudentCourseListSchema.extend({
+  section_id: positiveId,
+});
+
+export type StudentCourseListInput = z.infer<typeof StudentCourseListSchema>;
+export type StudentCourseDetailsInput = z.infer<typeof StudentCourseDetailsSchema>;

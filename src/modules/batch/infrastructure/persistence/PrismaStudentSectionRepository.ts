@@ -1,4 +1,6 @@
 import { PrismaClient, Prisma } from '@prisma/client';
+import { NotFoundError } from '../../../../shared/errors/NotFoundError';
+import { ValidationError } from '../../../../shared/errors/ValidationError';
 import { IStudentSectionRepository, CreateStudentSectionData, UpdateStudentSectionData } from '../../domain/repositories/IStudentSectionRepository';
 import { StudentSection, StudentSectionProps } from '../../domain/entities/StudentSection';
 import { StudentSectionModule, StudentSectionModuleProps } from '../../domain/entities/StudentSectionModule';
@@ -53,48 +55,74 @@ export class PrismaStudentSectionRepository implements IStudentSectionRepository
   }
 
   async create(data: CreateStudentSectionData): Promise<StudentSection> {
-    const record = await this.prisma.student_sections.create({
-      data: {
-        student_id: BigInt(data.studentId),
-        batch: {
-          connect: { id: BigInt(data.batchId) },
-        },
-        start_date: data.startDate ?? null,
-        end_date: data.endDate ?? null,
-        status: 'Active',
-        progress_percent: 0,
-        created_by: BigInt(data.createdBy),
-        updated_by: BigInt(data.updatedBy),
-      },
-      include: { batch: true },
-    });
+    const studentId = BigInt(data.studentId);
+    const batchId = BigInt(data.batchId);
+    const creatorId = BigInt(data.createdBy);
 
-    const batch = await this.prisma.program_section_batches.findUnique({
-      where: { id: BigInt(data.batchId) },
-    });
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const batch = await tx.program_section_batches.findUnique({ where: { id: batchId } });
+        if (!batch) throw new NotFoundError('Selected batch does not exist');
 
-    if (batch) {
-      const sectionModules = await this.prisma.modules.findMany({
-        where: { section_id: batch.section_id, status: 'Active' },
-        orderBy: { order: 'asc' },
-      });
+        const student = await tx.students.findUnique({ where: { id: studentId }, select: { id: true } });
+        if (!student) throw new NotFoundError('Student not found');
 
-      for (let i = 0; i < sectionModules.length; i++) {
-        const mod = sectionModules[i];
-        if (mod) {
-          await this.prisma.student_section_modules.create({
+        const record = await tx.student_sections.create({
+          data: {
+            student_id: studentId,
+            batch_id: batchId,
+            start_date: data.startDate ?? null,
+            end_date: data.endDate ?? null,
+            status: 'Active',
+            progress_percent: 0,
+            created_by: creatorId,
+            updated_by: BigInt(data.updatedBy),
+          },
+          include: { batch: true },
+        });
+
+        const modules = await tx.modules.findMany({
+          where: { section_id: batch.section_id, status: 'Active' },
+          orderBy: [{ order: 'asc' }, { id: 'asc' }],
+          select: {
+            id: true,
+            topics: { where: { status: 'Active' }, select: { id: true } },
+          },
+        });
+
+        for (const [index, module] of modules.entries()) {
+          const unlocked = index === 0;
+          const studentModule = await tx.student_section_modules.create({
             data: {
+              student_id: studentId,
               student_section_id: record.id,
-              module_id: mod.id,
-              status: i === 0 ? 'Unlocked' : 'Locked',
-              unlock_requested: false,
+              module_id: module.id,
+              status: unlocked ? 'Unlocked' : 'Locked',
             },
           });
-        }
-      }
-    }
 
-    return this.mapToDomain(record);
+          if (module.topics.length === 0) continue;
+          await tx.student_section_module_topics.createMany({
+            data: module.topics.map((topic) => ({
+              student_id: studentId,
+              student_section_module_id: studentModule.id,
+              topic_id: topic.id,
+              status: unlocked ? 'active' : 'new',
+              created_by: creatorId,
+            })),
+          });
+        }
+
+        return this.mapToDomain(record);
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ValidationError('Student is already enrolled in this batch', {
+          student_id: ['Student already assigned to this batch.'],
+        });
+      }
+      throw error;
+    }
   }
 
   async update(id: number, data: UpdateStudentSectionData): Promise<StudentSection | null> {
@@ -130,20 +158,27 @@ export class PrismaStudentSectionRepository implements IStudentSectionRepository
   }
 
   async delete(id: number): Promise<boolean> {
-    const existing = await this.prisma.student_sections.findUnique({
-      where: { id: BigInt(id) },
-    });
-    if (!existing) return false;
+    return this.prisma.$transaction(async (tx) => {
+      const enrollmentId = BigInt(id);
+      const existing = await tx.student_sections.findUnique({ where: { id: enrollmentId } });
+      if (!existing) return false;
 
-    await this.prisma.student_section_modules.deleteMany({
-      where: { student_section_id: BigInt(id) },
-    });
+      const topicFilter = { student_section_module: { student_section_id: enrollmentId } };
+      const topics = await tx.student_section_module_topics.findMany({
+        where: topicFilter,
+        select: { id: true },
+      });
+      if (topics.length > 0) {
+        await tx.student_topic_assessment_answers.deleteMany({
+          where: { student_topic_id: { in: topics.map((topic) => topic.id) } },
+        });
+        await tx.student_section_module_topics.deleteMany({ where: topicFilter });
+      }
 
-    await this.prisma.student_sections.delete({
-      where: { id: BigInt(id) },
+      await tx.student_section_modules.deleteMany({ where: { student_section_id: enrollmentId } });
+      await tx.student_sections.delete({ where: { id: enrollmentId } });
+      return true;
     });
-
-    return true;
   }
 
   async findModules(studentSectionId: number): Promise<StudentSectionModule[]> {

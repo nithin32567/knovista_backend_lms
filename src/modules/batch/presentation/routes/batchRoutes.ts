@@ -1,7 +1,9 @@
 import { requireRole } from '../../../../shared/middleware/requireRole';
 import { Router } from 'express';
+import { env } from '../../../../config/env';
 import { prisma } from '../../../../config/database';
 import { PrismaBatchRepository } from '../../infrastructure/persistence/PrismaBatchRepository';
+import { PrismaStudentCourseRepository } from '../../infrastructure/persistence/PrismaStudentCourseRepository';
 import { PrismaStudentSectionRepository } from '../../infrastructure/persistence/PrismaStudentSectionRepository';
 import { PrismaProgramExtensionRepository } from '../../infrastructure/persistence/PrismaProgramExtensionRepository';
 
@@ -17,6 +19,8 @@ import { UpdateStudentSectionUseCase } from '../../application/use-cases/enrollm
 import { DeleteStudentSectionUseCase } from '../../application/use-cases/enrollments/DeleteStudentSectionUseCase';
 import { GetStudentMyBatchesUseCase } from '../../application/use-cases/enrollments/GetStudentMyBatchesUseCase';
 import { GetStudentBatchModulesUseCase } from '../../application/use-cases/enrollments/GetStudentBatchModulesUseCase';
+import { GetStudentCoursesUseCase } from '../../application/use-cases/enrollments/GetStudentCoursesUseCase';
+import { StudentCourseController } from '../controllers/StudentCourseController';
 import { StudentSectionController } from '../controllers/StudentSectionController';
 
 import { ListExtensionsUseCase } from '../../application/use-cases/extensions/ListExtensionsUseCase';
@@ -28,7 +32,7 @@ import { ProgramExtensionController } from '../controllers/ProgramExtensionContr
 import { authenticate } from '../../../../shared/middleware/authenticate';
 import { validateRequest } from '../../../../shared/middleware/validateRequest';
 import { CreateBatchSchema } from '../../application/dto/BatchDTO';
-import { CreateStudentSectionSchema, UpdateStudentSectionSchema } from '../../application/dto/StudentSectionDTO';
+import { CreateStudentSectionSchema, StudentCourseDetailsSchema, StudentCourseListSchema, UpdateStudentSectionSchema } from '../../application/dto/StudentSectionDTO';
 import { CreateExtensionSchema, UpdateExtensionSchema } from '../../application/dto/ProgramExtensionDTO';
 
 export function createBatchRouter(): Router {
@@ -61,6 +65,12 @@ export function createBatchRouter(): Router {
     new GetExtensionUseCase(extensionRepo),
     new UpdateExtensionUseCase(extensionRepo, studentSectionRepo)
   );
+
+  const studentCourseController = new StudentCourseController(
+    new GetStudentCoursesUseCase(new PrismaStudentCourseRepository(prisma, env.APP_URL))
+  );
+  router.post('/student/getStudentSections', authenticate('student'), validateRequest(StudentCourseListSchema), studentCourseController.list);
+  router.post('/student/getStudentSectionDetails', authenticate('student'), validateRequest(StudentCourseDetailsSchema), studentCourseController.details);
 
   router.get('/student/my-batches', authenticate('student'), studentSectionController.myBatches);
   router.get('/student/my-batch/:batchId/modules', authenticate('student'), studentSectionController.batchModules);

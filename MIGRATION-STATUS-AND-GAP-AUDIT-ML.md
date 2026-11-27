@@ -16,7 +16,7 @@
 6. [ജോലികൾ ഏത് ക്രമത്തിൽ പൂർത്തിയാക്കണം?](#roadmap)
 7. [ഡെവലപ്പർമാർക്കുള്ള വിശദാംശങ്ങൾ: fields, keys, database](#technical)
 8. [മുഴുവൻ API പട്ടിക: ബാക്കിയുള്ള 115 + matching ഉള്ള 82](#api-inventory)
-9. [പരിശോധനയുടെ പരിധി, തെളിവുകൾ, ശേഷിക്കുന്ന tests](#verification)
+9. [പരിശോധനയുടെ പരിധി, തെളിവുകൾ, ശേഷിക്കുന്ന tests](#verification)അനുമതി
 
 <a id="overview"></a>
 
